@@ -235,15 +235,6 @@
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
-  function botReply(userText) {
-    // v0: local echo reply
-    return (
-      "Got it. You said: \"" +
-      userText +
-      "\"\n\n(Next, I’ll connect this to your DailySod API.)"
-    );
-  }
-
   function updateSendState() {
     var val = inputEl.value.trim();
     sendBtn.disabled = val.length === 0;
@@ -257,10 +248,50 @@
     inputEl.value = "";
     updateSendState();
 
-    // Simulated reply
-    setTimeout(function () {
-      addMessage("bot", botReply(text));
-    }, 350);
+    // Real backend call (Widget v1)
+addMessage("bot", "Typing...");
+
+var sessionId = window.__dailysodSessionId || null;
+
+fetch(new URL("/api/chat", script.src).toString(), {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    clientId: clientId,
+    message: text,
+    sessionId: sessionId,
+    pageUrl: window.location.href
+  }),
+})
+  .then(function (res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  })
+  .then(function (data) {
+    // remove the "Typing..." bubble by replacing last bot message
+    // simple approach: remove last message row if it was bot typing
+    var last = messagesEl.lastElementChild;
+    if (last && last.className.indexOf("ds-bot") !== -1) {
+      var bubble = last.querySelector(".ds-bubble");
+      if (bubble && bubble.textContent === "Typing...") {
+        messagesEl.removeChild(last);
+      }
+    }
+
+    window.__dailysodSessionId = data.sessionId || window.__dailysodSessionId;
+    addMessage("bot", data.reply || "No reply returned.");
+  })
+  .catch(function (err) {
+    var last = messagesEl.lastElementChild;
+    if (last && last.className.indexOf("ds-bot") !== -1) {
+      var bubble = last.querySelector(".ds-bubble");
+      if (bubble && bubble.textContent === "Typing...") {
+        messagesEl.removeChild(last);
+      }
+    }
+    addMessage("bot", "Sorry — something went wrong.\n\n" + String(err));
+  });
+
   }
 
   // Initial greeting
