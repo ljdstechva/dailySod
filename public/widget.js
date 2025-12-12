@@ -255,6 +255,7 @@ var sessionId = window.__dailysodSessionId || null;
 
 fetch(new URL("/api/chat", script.src).toString(), {
   method: "POST",
+  mode: "cors",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     clientId: clientId,
