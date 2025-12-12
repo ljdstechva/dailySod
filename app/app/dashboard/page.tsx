@@ -1,29 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+
 export default function DashboardPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState<string>("");
+
+  useEffect(() => {
+    const run = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) {
+        router.push("/login");
+        return;
+      }
+      setEmail(data.user.email || "");
+    };
+    run();
+  }, [router]);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Skeleton view. Next step: Supabase auth + real data.
-        </p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        {[
-          { label: "Leads (7d)", value: "0" },
-          { label: "Conversations (7d)", value: "0" },
-          { label: "Booked (7d)", value: "0" },
-        ].map((c) => (
-          <div key={c.label} className="rounded-2xl border border-slate-200 p-5">
-            <div className="text-sm text-slate-600">{c.label}</div>
-            <div className="mt-2 text-3xl font-semibold">{c.value}</div>
-          </div>
-        ))}
+        <p className="mt-1 text-sm text-slate-600">Signed in as {email || "…"}</p>
       </div>
 
       <div className="rounded-2xl border border-slate-200 p-5">
-        <div className="text-sm font-semibold">Recent leads</div>
-        <div className="mt-3 text-sm text-slate-600">No leads yet.</div>
+        <div className="text-sm font-semibold">Next</div>
+        <div className="mt-2 text-sm text-slate-600">
+          We’ll create your “client” record in Supabase and start showing real data.
+        </div>
       </div>
     </div>
   );
