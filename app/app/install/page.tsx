@@ -26,7 +26,7 @@ export default function InstallWidgetPage() {
 
   const snippet = useMemo(() => {
     const clientId = client?.id || "CLIENT_ID";
-    return `<script src="https://YOUR_DOMAIN/widget.js" data-client-id="${clientId}"></script>`;
+    return `<script src="https://daily-sod.vercel.app/widget.js" data-client-id="${clientId}"></script>`;
   }, [client]);
 
   const copy = async () => {
