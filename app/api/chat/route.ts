@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import OpenAI from "openai";
 
 type ChatRequest = {
   clientId?: string;
@@ -30,6 +31,12 @@ function getAdminSupabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("Missing OPENAI_API_KEY");
+  return new OpenAI({ apiKey: key });
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders() });
 }
@@ -55,17 +62,37 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing message" }, { status: 400, headers: corsHeaders() });
   }
 
-  const reply =
-    `Got your message.\n\n` +
-    `clientId: ${clientId}\n` +
-    `message: ${message}\n\n` +
-    `Next: we’ll replace this with OpenAI + knowledge base.`;
+  // ---- OpenAI reply (simple for now) ----
+  let reply = "Sorry — I couldn’t generate a reply.";
+  try {
+    const openai = getOpenAI();
 
-  // Log to Supabase (server-side)
+    const system = [
+      "You are DailySod, an assistant embedded on a business website.",
+      "Be concise, helpful, and business-friendly.",
+      "If the user asks for contact, suggest leaving name + email + phone.",
+      "Do not invent facts about the business because you do not have a knowledge base yet.",
+    ].join(" ");
+
+    const result = await openai.chat.completions.create({
+      model: "gpt-4.1-mini",
+      temperature: 0.4,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: message },
+      ],
+    });
+
+    reply = result.choices[0]?.message?.content?.trim() || reply;
+  } catch (e) {
+    console.error("[/api/chat] OpenAI failed:", e);
+    reply = "Sorry — I’m having trouble right now. Please try again in a moment.";
+  }
+
+  // ---- Logging (same as before) ----
   try {
     const supabaseAdmin = getAdminSupabase();
 
-    // Ensure conversation exists for (client_id, session_id)
     const { data: convo, error: convoErr } = await supabaseAdmin
       .from("conversations")
       .upsert(
@@ -83,7 +110,6 @@ export async function POST(req: Request) {
 
     if (convoErr) throw convoErr;
 
-    // Insert user message
     const { error: msgErr1 } = await supabaseAdmin.from("messages").insert({
       conversation_id: convo.id,
       sender: "user",
@@ -91,7 +117,6 @@ export async function POST(req: Request) {
     });
     if (msgErr1) throw msgErr1;
 
-    // Insert assistant message
     const { error: msgErr2 } = await supabaseAdmin.from("messages").insert({
       conversation_id: convo.id,
       sender: "assistant",
@@ -99,7 +124,6 @@ export async function POST(req: Request) {
     });
     if (msgErr2) throw msgErr2;
   } catch (e) {
-    // Don’t break chat if logging fails; just return reply
     console.error("[/api/chat] logging failed:", e);
   }
 
