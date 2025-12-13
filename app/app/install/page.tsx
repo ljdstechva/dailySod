@@ -3,25 +3,24 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Copy, Check, Code2 } from 'lucide-react';
+import { getOrCreateClient } from "@/lib/client";
+
 
 export default function InstallPage() {
   const [clientId, setClientId] = useState<string>('LOADING...');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    async function getClientId() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-        if (data) setClientId(data.id);
-      }
-    }
-    getClientId();
-  }, []);
+  async function getClientId() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const client = await getOrCreateClient(supabase as any, user.id);
+    setClientId(client.id);
+  }
+  getClientId();
+}, []);
+
 
   const snippet = `<script src="https://daily-sod.vercel.app/widget.js" data-client-id="${clientId}"></script>`;
 

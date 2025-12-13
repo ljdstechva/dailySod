@@ -1,38 +1,32 @@
-import { supabase } from "@/lib/supabaseClient";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ClientRow = {
   id: string;
-  owner_user_id: string;
-  name: string;
-  niche: string | null;
+  user_id: string;
+  created_at?: string;
 };
 
-export async function getOrCreateClient(): Promise<ClientRow> {
-  const { data: userData, error: userErr } = await supabase.auth.getUser();
-  if (userErr) throw userErr;
-
-  const user = userData.user;
-  if (!user) throw new Error("Not authenticated");
-
+export async function getOrCreateClient(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<ClientRow> {
+  // 1) Try fetch existing client
   const { data: existing, error: fetchErr } = await supabase
     .from("clients")
-    .select("id, owner_user_id, name, niche")
-    .eq("owner_user_id", user.id)
+    .select("id,user_id,created_at")
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (fetchErr) throw fetchErr;
   if (existing) return existing as ClientRow;
 
-  const { data: created, error: insertErr } = await supabase
+  // 2) Create if missing
+  const { data: created, error: createErr } = await supabase
     .from("clients")
-    .insert({
-      owner_user_id: user.id,
-      name: "My Business",
-      niche: null,
-    })
-    .select("id, owner_user_id, name, niche")
+    .insert({ user_id: userId })
+    .select("id,user_id,created_at")
     .single();
 
-  if (insertErr) throw insertErr;
+  if (createErr) throw createErr;
   return created as ClientRow;
 }
