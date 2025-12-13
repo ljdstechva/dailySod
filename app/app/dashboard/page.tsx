@@ -1,9 +1,8 @@
-"use client";
+'use client';
 
-import React, { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { getOrCreateClient } from "@/lib/client";
-import { AreaChart } from "@/components/DashboardChart";
+import React, { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { AreaChart } from '@/components/DashboardChart';
 import {
   MessageCircle,
   Users,
@@ -11,82 +10,88 @@ import {
   Clock,
   ArrowUpRight,
   ArrowDownRight,
-} from "lucide-react";
+} from 'lucide-react';
+
+type Stats = { conversations: number; messages: number };
 
 export default function DashboardPage() {
   const [clientId, setClientId] = useState<string | null>(null);
-  const [stats, setStats] = useState({ conversations: 0, messages: 0 });
+  const [stats, setStats] = useState<Stats>({ conversations: 0, messages: 0 });
   const [conversations, setConversations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const chartData = [
-    { label: "Mon", value: 12 },
-    { label: "Tue", value: 18 },
-    { label: "Wed", value: 15 },
-    { label: "Thu", value: 25 },
-    { label: "Fri", value: 32 },
-    { label: "Sat", value: 28 },
-    { label: "Sun", value: 40 },
-  ];
+  // Mock graph data (sellable UI, but real stats)
+  const chartData = useMemo(
+    () => [
+      { label: 'Mon', value: 12 },
+      { label: 'Tue', value: 18 },
+      { label: 'Wed', value: 15 },
+      { label: 'Thu', value: 25 },
+      { label: 'Fri', value: 32 },
+      { label: 'Sat', value: 28 },
+      { label: 'Sun', value: 40 },
+    ],
+    []
+  );
 
   useEffect(() => {
     async function fetchData() {
+      setLoading(true);
+
       try {
         const {
           data: { user },
+          error: userErr,
         } = await supabase.auth.getUser();
 
+        if (userErr) throw userErr;
         if (!user) return;
 
-        // ✅ This is the missing piece
-        const client = await getOrCreateClient(supabase as any, user.id);
-        const cId = client.id;
+        // IMPORTANT: owner_user_id is the correct column
+        const { data: client, error: clientErr } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('owner_user_id', user.id)
+          .single();
 
+        if (clientErr) throw clientErr;
+
+        const cId = client?.id || null;
         setClientId(cId);
 
-        // Conversations count (correct)
-        const { count: convCount, error: convErr } = await supabase
-          .from("conversations")
-          .select("*", { count: "exact", head: true })
-          .eq("client_id", cId);
+        if (!cId) {
+          setStats({ conversations: 0, messages: 0 });
+          setConversations([]);
+          return;
+        }
 
-        if (convErr) throw convErr;
+        // Conversations count
+        const { count: convCount, error: convCountErr } = await supabase
+          .from('conversations')
+          .select('*', { count: 'exact', head: true })
+          .eq('client_id', cId);
 
-        // Fetch recent conversations
-        const { data: recentConvs, error: recentErr } = await supabase
-          .from("conversations")
-          .select("id,created_at,session_id")
-          .eq("client_id", cId)
-          .order("created_at", { ascending: false })
-          .limit(5);
+        if (convCountErr) throw convCountErr;
 
-        if (recentErr) throw recentErr;
+        // Get conversation ids for message counting
+        const { data: convIdsRows, error: convIdsErr } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('client_id', cId);
 
-        setConversations(recentConvs || []);
+        if (convIdsErr) throw convIdsErr;
 
-        // ✅ Messages count fix (messages table uses conversation_id)
-        // Get conversation IDs first
-        const convIds = (recentConvs || []).map((c) => c.id);
+        const convIds = (convIdsRows || []).map((r: any) => r.id);
 
-        // If you want ALL messages count, pull IDs from all conversations:
-        const { data: allConvs, error: allConvErr } = await supabase
-          .from("conversations")
-          .select("id")
-          .eq("client_id", cId);
-
-        if (allConvErr) throw allConvErr;
-
-        const allConvIds = (allConvs || []).map((c) => c.id);
-
+        // Messages count (messages table uses conversation_id)
         let msgCount = 0;
+        if (convIds.length > 0) {
+          const { count: mCount, error: msgCountErr } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .in('conversation_id', convIds);
 
-        if (allConvIds.length > 0) {
-          const { count: mCount, error: msgErr } = await supabase
-            .from("messages")
-            .select("*", { count: "exact", head: true })
-            .in("conversation_id", allConvIds);
-
-          if (msgErr) throw msgErr;
+          if (msgCountErr) throw msgCountErr;
           msgCount = mCount || 0;
         }
 
@@ -94,8 +99,20 @@ export default function DashboardPage() {
           conversations: convCount || 0,
           messages: msgCount,
         });
+
+        // Recent conversations
+        const { data: recentConvs, error: recentErr } = await supabase
+          .from('conversations')
+          .select('*')
+          .eq('client_id', cId)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (recentErr) throw recentErr;
+
+        setConversations(recentConvs || []);
       } catch (err) {
-        console.error("Dashboard data fetch error:", err);
+        console.error('Dashboard data fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -130,7 +147,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Conversations */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-orange-50 dark:bg-orange-900/10 rounded-xl group-hover:scale-110 transition-transform">
@@ -148,6 +167,7 @@ export default function DashboardPage() {
           </h3>
         </div>
 
+        {/* Messages */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl group-hover:scale-110 transition-transform">
@@ -165,6 +185,7 @@ export default function DashboardPage() {
           </h3>
         </div>
 
+        {/* Response time (static for now) */}
         <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow group">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-purple-50 dark:bg-purple-900/10 rounded-xl group-hover:scale-110 transition-transform">
@@ -182,6 +203,7 @@ export default function DashboardPage() {
           </h3>
         </div>
 
+        {/* Client ID */}
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-900 p-6 rounded-2xl border border-slate-800 shadow-lg text-white">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
@@ -192,15 +214,17 @@ export default function DashboardPage() {
           <div className="mt-2 flex items-center justify-between gap-2">
             <code
               className="text-sm font-mono bg-black/30 px-2 py-1 rounded border border-white/10 truncate flex-1"
-              title={clientId || ""}
+              title={clientId || ''}
             >
-              {clientId || "Not Found"}
+              {clientId || 'Not Found'}
             </code>
           </div>
         </div>
       </div>
 
+      {/* Graph + Recent */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Graph */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -216,11 +240,15 @@ export default function DashboardPage() {
           <AreaChart data={chartData} height={300} color="#f97316" />
         </div>
 
+        {/* Recent Activity */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">
               Recent Chats
             </h3>
+            <span className="text-xs font-medium text-orange-600 dark:text-orange-400 cursor-pointer hover:underline">
+              View All
+            </span>
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -243,17 +271,27 @@ export default function DashboardPage() {
                   >
                     <div className="flex justify-between items-start mb-1">
                       <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                        Session {conv.session_id?.slice(0, 6) || "Guest"}
+                        Guest
                       </span>
                       <span className="text-[10px] text-slate-400">
                         {new Date(conv.created_at).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
-                      Conversation ID: {conv.id.slice(0, 8)}...
+                    <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 mb-2">
+                      ID: {String(conv.id).slice(0, 8)}...
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          conv.status === 'closed' ? 'bg-slate-300' : 'bg-green-500'
+                        }`}
+                      ></span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                        {conv.status || 'active'}
+                      </span>
                     </div>
                   </div>
                 ))}
