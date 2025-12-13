@@ -1,85 +1,118 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { supabase } from '@/lib/supabaseClient';
+import { Zap, Loader2, ArrowLeft } from 'lucide-react';
 
 export default function RegisterPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const onRegister = async () => {
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
-    setStatus(null);
+    setError(null);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    setLoading(false);
-
-    if (error) {
-      setStatus(error.message);
-      return;
+      if (authError) throw authError;
+      
+      router.push('/app/dashboard');
+    } catch (err: any) {
+      setError(err.message || 'Failed to register');
+      setLoading(false);
     }
-
-    setStatus("Account created. Check your email if confirmation is enabled.");
   };
 
   return (
-    <main className="min-h-screen bg-white text-slate-900">
-      <div className="mx-auto max-w-md px-6 py-16">
-        <a href="/" className="text-sm text-slate-600 hover:text-slate-900">
-          ← Back
-        </a>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
 
-        <h1 className="mt-6 text-2xl font-semibold">Create your account</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Register to access your DailySod dashboard.
-        </p>
+      <div className="absolute top-6 right-6 z-10">
+        <ThemeToggle />
+      </div>
 
-        <div className="mt-8 space-y-4 rounded-2xl border border-slate-200 p-6">
-          <div>
-            <label className="text-sm font-medium">Email</label>
-            <input
-              className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2"
-              placeholder="you@company.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+      <div className="absolute top-6 left-6 z-10">
+         <Link href="/" className="text-sm text-slate-500 hover:text-orange-500 flex items-center gap-1 transition-colors">
+            <ArrowLeft className="w-4 h-4" /> Back to Home
+         </Link>
+      </div>
 
-          <div>
-            <label className="text-sm font-medium">Password</label>
-            <input
-              className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-2"
-              placeholder="Create a password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-
-          <button
-            onClick={onRegister}
-            disabled={loading || !email || !password}
-            className="w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-          >
-            {loading ? "Creating..." : "Create account"}
-          </button>
-
-          {status && <p className="text-sm text-slate-600">{status}</p>}
-
-          <p className="text-center text-sm text-slate-600">
-            Already have an account?{" "}
-            <a className="font-medium text-slate-900 hover:underline" href="/login">
-              Log in
-            </a>
+      <div className="w-full max-w-[400px] z-10">
+        <div className="mb-8 text-center">
+          <Link href="/" className="inline-flex items-center gap-2 font-bold text-2xl mb-6">
+             <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-500/25">
+              <Zap className="w-6 h-6 fill-current" />
+            </div>
+          </Link>
+          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">Create Account</h2>
+          <p className="text-slate-600 dark:text-slate-400">
+            Start building your AI assistant today.
           </p>
         </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-black/50 p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-sm font-medium rounded-lg animate-in fade-in slide-in-from-top-2">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleRegister} className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2" htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all font-medium"
+                placeholder="name@company.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2" htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all font-medium"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 hover:-translate-y-0.5"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Get Started'}
+            </button>
+          </form>
+        </div>
+
+        <div className="mt-8 text-center text-sm text-slate-600 dark:text-slate-400">
+          Already have an account?{' '}
+          <Link href="/login" className="text-orange-600 dark:text-orange-400 font-bold hover:underline">
+            Log in
+          </Link>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

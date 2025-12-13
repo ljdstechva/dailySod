@@ -1,83 +1,92 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { getOrCreateClient, ClientRow } from "@/lib/client";
+import React, { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { Copy, Check, Code2 } from 'lucide-react';
 
-export default function InstallWidgetPage() {
-  const router = useRouter();
-  const [client, setClient] = useState<ClientRow | null>(null);
+export default function InstallPage() {
+  const [clientId, setClientId] = useState<string>('LOADING...');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    const run = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) {
-        router.push("/login");
-        return;
+    async function getClientId() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+        if (data) setClientId(data.id);
       }
-      const c = await getOrCreateClient();
-      setClient(c);
-    };
+    }
+    getClientId();
+  }, []);
 
-    run().catch(() => router.push("/login"));
-  }, [router]);
+  const snippet = `<script src="https://daily-sod.vercel.app/widget.js" data-client-id="${clientId}"></script>`;
 
-  const snippet = useMemo(() => {
-    const clientId = client?.id || "CLIENT_ID";
-    return `<script src="https://daily-sod.vercel.app/widget.js" data-client-id="${clientId}"></script>`;
-  }, [client]);
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(snippet);
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(snippet);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Install widget</h1>
-        <p className="mt-1 text-sm text-slate-600">
-          Copy and paste this snippet into your website.
+        <h1 className="text-3xl font-bold mb-2">Install Widget</h1>
+        <p className="text-slate-500 dark:text-slate-400">
+          Copy and paste the code snippet below into your website's HTML to activate the assistant.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 p-5">
-        <div className="text-sm font-semibold">Your install code</div>
-        <p className="mt-2 text-sm text-slate-600">
-          Paste it into your site’s header/footer, or a custom HTML block.
-        </p>
-
-        <pre className="mt-4 overflow-x-auto rounded-xl bg-slate-900 p-4 text-xs text-white">
-          {snippet}
-        </pre>
-
-        <div className="mt-4 flex gap-3">
-          <button
-            onClick={copy}
-            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            {copied ? "Copied!" : "Copy code"}
-          </button>
-
-          <a
-            href="/app/dashboard"
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50"
-          >
-            Back to dashboard
-          </a>
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 sm:p-8">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-xl flex items-center justify-center text-orange-600 dark:text-orange-500">
+            <Code2 className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold">Embed Code</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Place this before the closing <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">&lt;/body&gt;</code> tag.
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="rounded-2xl border border-slate-200 p-5">
-        <div className="text-sm font-semibold">Next</div>
-        <ul className="mt-2 list-inside list-disc text-sm text-slate-600 space-y-1">
-          <li>We’ll host widget.js on your domain.</li>
-          <li>We’ll make the chat bubble appear on any site that includes this snippet.</li>
-          <li>Then we’ll connect it to your AI backend.</li>
-        </ul>
+        <div className="relative group">
+          <pre className="bg-slate-950 text-slate-100 p-6 rounded-xl overflow-x-auto text-sm font-mono leading-relaxed border border-slate-800">
+            {snippet}
+          </pre>
+        </div>
+
+        <div className="mt-6 flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={copyToClipboard}
+            className={`
+              flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-bold text-white transition-all
+              ${copied 
+                ? 'bg-green-600 hover:bg-green-700' 
+                : 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/20'
+              }
+            `}
+          >
+            {copied ? (
+              <>
+                <Check className="w-5 h-5" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="w-5 h-5" />
+                Copy Snippet
+              </>
+            )}
+          </button>
+          
+          <div className="flex-1 flex items-center justify-center text-sm text-slate-500">
+            Need help? Check our documentation or support.
+          </div>
+        </div>
       </div>
     </div>
   );
