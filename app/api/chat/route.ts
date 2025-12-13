@@ -62,32 +62,60 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing message" }, { status: 400, headers: corsHeaders() });
   }
 
-  // ---- OpenAI reply (simple for now) ----
-  let reply = "Sorry — I couldn’t generate a reply.";
-  try {
-    const openai = getOpenAI();
+  // ---- OpenAI reply (RAG enabled) ----
+let reply = "Sorry — I couldn’t generate a reply.";
+try {
+  const openai = getOpenAI();
+  const supabaseAdmin = getAdminSupabase();
 
-    const system = [
-      "You are DailySod, an assistant embedded on a business website.",
-      "Be concise, helpful, and business-friendly.",
-      "If the user asks for contact, suggest leaving name + email + phone.",
-      "Do not invent facts about the business because you do not have a knowledge base yet.",
-    ].join(" ");
+  // 1) Embed the user query
+  const qEmb = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: message,
+  });
 
-    const result = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      temperature: 0.4,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: message },
-      ],
-    });
+  const queryEmbedding = qEmb.data[0].embedding;
 
-    reply = result.choices[0]?.message?.content?.trim() || reply;
-  } catch (e) {
-    console.error("[/api/chat] OpenAI failed:", e);
-    reply = "Sorry — I’m having trouble right now. Please try again in a moment.";
-  }
+  // 2) Retrieve top KB chunks for this client
+  const { data: matches, error: matchErr } = await supabaseAdmin.rpc("match_kb_chunks", {
+    p_client_id: clientId,
+    p_query_embedding: queryEmbedding,
+    p_match_count: 5,
+  });
+
+  if (matchErr) throw matchErr;
+
+  const contextBlocks = (matches || [])
+    .map((m: any, idx: number) => `Source ${idx + 1}:\n${m.content}`)
+    .join("\n\n---\n\n");
+
+  const system = [
+    "You are DailySod, an assistant embedded on a business website.",
+    "Be concise, helpful, and business-friendly.",
+    "Use the provided Knowledge Base context when relevant.",
+    "If the answer is not in the Knowledge Base, say you’re not sure and suggest contacting the business.",
+    "Do not invent facts or policies.",
+  ].join(" ");
+
+  const userPrompt = contextBlocks
+    ? `Knowledge Base Context:\n\n${contextBlocks}\n\nUser message:\n${message}`
+    : `User message:\n${message}`;
+
+  const result = await openai.chat.completions.create({
+    model: "gpt-4.1-mini",
+    temperature: 0.2,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: userPrompt },
+    ],
+  });
+
+  reply = result.choices[0]?.message?.content?.trim() || reply;
+} catch (e) {
+  console.error("[/api/chat] OpenAI/RAG failed:", e);
+  reply = "Sorry — I’m having trouble right now. Please try again in a moment.";
+}
+
 
   // ---- Logging (same as before) ----
   try {
