@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { AreaChart } from "@/components/DashboardChart";
 import {
@@ -72,6 +72,9 @@ export default function DashboardPage() {
 
   // Pagination for modal list
   const [visibleChatCount, setVisibleChatCount] = useState(4);
+
+  // Modal ref for outside clicks
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // Prevent double fetch
   const pendingFetchRef = useRef<Record<string, boolean>>({});
@@ -178,21 +181,33 @@ export default function DashboardPage() {
   }, []);
 
   // ---- Modal & Interaction ----
-  const openModal = () => setChatModalOpen(true);
-  const closeModal = () => {
+  const openModal = useCallback(() => setChatModalOpen(true), []);
+  const closeModal = useCallback(() => {
     setChatModalOpen(false);
     setOpenConvId(null);
     setVisibleChatCount(4);
-  };
+  }, []);
 
   useEffect(() => {
     if (!chatModalOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") closeModal();
     };
+    const onClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (!modalRef.current) return;
+      if (!modalRef.current.contains(e.target as Node)) {
+        closeModal();
+      }
+    };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [chatModalOpen]);
+    window.addEventListener("mousedown", onClickOutside);
+    window.addEventListener("touchstart", onClickOutside);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onClickOutside);
+      window.removeEventListener("touchstart", onClickOutside);
+    };
+  }, [chatModalOpen, closeModal]);
 
   async function loadMessages(conversationId: string, limit: number) {
     try {
@@ -429,7 +444,7 @@ export default function DashboardPage() {
           />
 
           {/* Modal Panel with float-up animation */}
-          <div className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-slate-950 shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 animate-modal-up overflow-hidden">
+          <div ref={modalRef} className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-slate-950 shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800 animate-modal-up overflow-hidden">
             
             {/* Header */}
             <div className="flex-none flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md z-10">
