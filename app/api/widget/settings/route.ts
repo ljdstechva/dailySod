@@ -32,14 +32,20 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400, headers: corsHeaders() });
+    return NextResponse.json(
+      { error: "Invalid JSON" },
+      { status: 400, headers: corsHeaders() }
+    );
   }
 
   const clientId = (body.clientId || "").trim();
   const settings = body.settings || {};
 
   if (!clientId) {
-    return NextResponse.json({ error: "Missing clientId" }, { status: 400, headers: corsHeaders() });
+    return NextResponse.json(
+      { error: "Missing clientId" },
+      { status: 400, headers: corsHeaders() }
+    );
   }
 
   // Light validation / allowlist (prevents random junk in JSON)
@@ -48,12 +54,17 @@ export async function POST(req: Request) {
     "bubbleColor",
     "bubbleText",
     "bubbleImage",
+
     "chatTitle",
     "chatHeaderBg",
     "chatHeaderText",
     "chatPanelBg",
+
     "chatUserBubble",
+    "chatUserText", // ✅ NEW
     "chatBotBubble",
+    "chatBotText", // ✅ NEW
+
     "position",
   ]);
 
@@ -73,7 +84,12 @@ export async function POST(req: Request) {
       .single();
 
     if (cErr) throw cErr;
-    if (!c) return NextResponse.json({ error: "Client not found" }, { status: 404, headers: corsHeaders() });
+    if (!c) {
+      return NextResponse.json(
+        { error: "Client not found" },
+        { status: 404, headers: corsHeaders() }
+      );
+    }
 
     const { error: upsertErr } = await supabaseAdmin
       .from("widget_settings")
@@ -87,6 +103,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true }, { headers: corsHeaders() });
   } catch (e: any) {
     console.error("[/api/widget/settings] failed:", e);
-    return NextResponse.json({ error: e?.message || "Save failed" }, { status: 500, headers: corsHeaders() });
+    return NextResponse.json(
+      { error: e?.message || "Save failed" },
+      { status: 500, headers: corsHeaders() }
+    );
   }
 }

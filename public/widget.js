@@ -17,12 +17,16 @@
     bubbleColor: "#0f172a",
     bubbleText: "Ask me anything",
     bubbleImage: null,
+
     chatTitle: "DailySod Chat",
     chatHeaderBg: "#ffffff",
     chatHeaderText: "#0f172a",
     chatPanelBg: "#f8fafc",
+
     chatUserBubble: "#0f172a",
+    chatUserText: "#ffffff", // ✅ NEW
     chatBotBubble: "#ffffff",
+    chatBotText: "#0f172a", // ✅ NEW
   };
 
   function safe(v, fallback) {
@@ -37,12 +41,16 @@
       bubbleColor: safe(s.bubbleColor, DEFAULTS.bubbleColor),
       bubbleText: safe(s.bubbleText, DEFAULTS.bubbleText),
       bubbleImage: safe(s.bubbleImage, DEFAULTS.bubbleImage),
+
       chatTitle: safe(s.chatTitle, DEFAULTS.chatTitle),
       chatHeaderBg: safe(s.chatHeaderBg, DEFAULTS.chatHeaderBg),
       chatHeaderText: safe(s.chatHeaderText, DEFAULTS.chatHeaderText),
       chatPanelBg: safe(s.chatPanelBg, DEFAULTS.chatPanelBg),
+
       chatUserBubble: safe(s.chatUserBubble, DEFAULTS.chatUserBubble),
+      chatUserText: safe(s.chatUserText, DEFAULTS.chatUserText),
       chatBotBubble: safe(s.chatBotBubble, DEFAULTS.chatBotBubble),
+      chatBotText: safe(s.chatBotText, DEFAULTS.chatBotText),
     };
   }
 
@@ -56,8 +64,12 @@
       --ds-header-bg: ${DEFAULTS.chatHeaderBg};
       --ds-header-text: ${DEFAULTS.chatHeaderText};
       --ds-panel-bg: ${DEFAULTS.chatPanelBg};
+
       --ds-user-bubble: ${DEFAULTS.chatUserBubble};
+      --ds-user-text: ${DEFAULTS.chatUserText};
       --ds-bot-bubble: ${DEFAULTS.chatBotBubble};
+      --ds-bot-text: ${DEFAULTS.chatBotText};
+
       --ds-border: #e2e8f0;
     }
 
@@ -73,7 +85,6 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
 
       background: var(--ds-primary);
       color: white;
@@ -92,12 +103,14 @@
       border-radius: 999px;
       padding: 0;
     }
+
+    /* ✅ Rounded must be plain centred text only */
     #ds-bubble.ds-rounded {
       height: 44px;
       min-width: 170px;
       border-radius: 14px;
       padding: 0 14px;
-      justify-content: flex-start;
+      justify-content: center;
     }
 
     /* Bubble inner icon container (centred always) */
@@ -114,17 +127,20 @@
       justify-content: center;
       flex: 0 0 auto;
     }
+
     #ds-bubble .ds-icon img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
+
     #ds-bubble .ds-text {
       font-size: 14px;
       font-weight: 700;
       white-space: nowrap;
       line-height: 1;
+      text-align: center;
     }
 
     /* Panel */
@@ -193,13 +209,13 @@
       line-height: 1.35;
       border: 1px solid var(--ds-border);
       background: var(--ds-bot-bubble);
-      color: #0f172a;
+      color: var(--ds-bot-text);
       white-space: pre-wrap;
     }
 
     .ds-user .ds-bubble-msg {
       background: var(--ds-user-bubble);
-      color: white;
+      color: var(--ds-user-text);
       border-color: var(--ds-user-bubble);
     }
 
@@ -288,7 +304,6 @@
   var sendBtn = panel.querySelector("#ds-send");
 
   function setSide(position) {
-    // right/left positioning for both bubble and panel
     var side = position === "left" ? "left" : "right";
     bubble.style.left = "";
     bubble.style.right = "";
@@ -310,35 +325,45 @@
     document.documentElement.style.setProperty("--ds-header-bg", s.chatHeaderBg);
     document.documentElement.style.setProperty("--ds-header-text", s.chatHeaderText);
     document.documentElement.style.setProperty("--ds-panel-bg", s.chatPanelBg);
-    document.documentElement.style.setProperty("--ds-user-bubble", s.chatUserBubble);
-    document.documentElement.style.setProperty("--ds-bot-bubble", s.chatBotBubble);
 
-    // Bubble shape + content
+    document.documentElement.style.setProperty("--ds-user-bubble", s.chatUserBubble);
+    document.documentElement.style.setProperty("--ds-user-text", s.chatUserText);
+    document.documentElement.style.setProperty("--ds-bot-bubble", s.chatBotBubble);
+    document.documentElement.style.setProperty("--ds-bot-text", s.chatBotText);
+
+    // Bubble shape
     bubble.classList.remove("ds-circle", "ds-rounded");
     bubble.classList.add(s.bubbleShape === "circle" ? "ds-circle" : "ds-rounded");
 
     var iconEl = bubble.querySelector('[data-role="icon"]');
     var textEl = bubble.querySelector('[data-role="text"]');
 
-    // Icon/image
-    if (iconEl) {
-      iconEl.innerHTML = "";
-      if (s.bubbleImage) {
-        var img = document.createElement("img");
-        img.src = s.bubbleImage;
-        img.alt = "chat icon";
-        iconEl.appendChild(img);
-      } else {
-        iconEl.textContent = "💬";
+    // ✅ Rounded: plain centred text only, NO icon/image
+    if (s.bubbleShape === "rounded") {
+      if (iconEl) {
+        iconEl.innerHTML = "";
+        iconEl.style.display = "none";
       }
-    }
-
-    // Text (only show on rounded)
-    if (textEl) {
-      if (s.bubbleShape === "rounded") {
+      if (textEl) {
         textEl.textContent = s.bubbleText || DEFAULTS.bubbleText;
         textEl.style.display = "inline";
-      } else {
+      }
+    } else {
+      // ✅ Circle: icon only, centred; image optional
+      if (iconEl) {
+        iconEl.style.display = "inline-flex";
+        iconEl.innerHTML = "";
+
+        if (s.bubbleImage) {
+          var img = document.createElement("img");
+          img.src = s.bubbleImage;
+          img.alt = "chat icon";
+          iconEl.appendChild(img);
+        } else {
+          iconEl.textContent = "💬";
+        }
+      }
+      if (textEl) {
         textEl.textContent = "";
         textEl.style.display = "none";
       }
@@ -450,16 +475,16 @@
   function hashSettings(obj) {
     try {
       return JSON.stringify(obj || {});
-    } catch {
+    } catch (e) {
       return String(Date.now());
     }
   }
 
   function fetchAndApply() {
-    return fetch(new URL("/api/widget/config?clientId=" + encodeURIComponent(clientId), script.src).toString(), {
-      method: "GET",
-      mode: "cors",
-    })
+    return fetch(
+      new URL("/api/widget/config?clientId=" + encodeURIComponent(clientId), script.src).toString(),
+      { method: "GET", mode: "cors" }
+    )
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();
@@ -475,7 +500,6 @@
       })
       .catch(function (err) {
         console.warn("[DailySod widget] config fetch failed:", err);
-        // Apply defaults if first load fails
         if (!lastConfigHash) {
           lastConfigHash = hashSettings(DEFAULTS);
           applyConfig(DEFAULTS);
@@ -483,7 +507,6 @@
       });
   }
 
-  // Apply once immediately, then poll so "Apply" updates live widgets
   fetchAndApply();
   setInterval(fetchAndApply, 8000);
 

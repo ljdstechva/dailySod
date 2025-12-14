@@ -26,7 +26,10 @@ export async function GET(req: Request) {
   const clientId = (searchParams.get("clientId") || "").trim();
 
   if (!clientId) {
-    return NextResponse.json({ error: "Missing clientId" }, { status: 400, headers: corsHeaders() });
+    return NextResponse.json(
+      { error: "Missing clientId" },
+      { status: 400, headers: corsHeaders() }
+    );
   }
 
   try {
@@ -40,16 +43,21 @@ export async function GET(req: Request) {
 
     if (error) throw error;
 
+    const settings = data?.settings && typeof data.settings === "object" ? data.settings : {};
+
     return NextResponse.json(
       {
         ok: true,
-        settings: data?.settings || {},
+        settings,
         updatedAt: data?.updated_at || null,
       },
       { headers: corsHeaders() }
     );
   } catch (e: any) {
     console.error("[/api/widget/config] failed:", e);
-    return NextResponse.json({ error: e?.message || "Fetch failed" }, { status: 500, headers: corsHeaders() });
+    return NextResponse.json(
+      { error: e?.message || "Fetch failed" },
+      { status: 500, headers: corsHeaders() }
+    );
   }
 }

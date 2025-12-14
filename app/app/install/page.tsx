@@ -25,12 +25,16 @@ type WidgetSettings = {
   bubbleColor?: string;
   bubbleText?: string;
   bubbleImage?: string | null;
+
   chatTitle?: string;
   chatHeaderBg?: string;
   chatHeaderText?: string;
   chatPanelBg?: string;
+
   chatUserBubble?: string;
+  chatUserText?: string; // ✅ NEW
   chatBotBubble?: string;
+  chatBotText?: string; // ✅ NEW
 };
 
 const DEFAULTS: Required<WidgetSettings> = {
@@ -39,12 +43,16 @@ const DEFAULTS: Required<WidgetSettings> = {
   bubbleColor: '#0f172a',
   bubbleText: 'Ask me anything',
   bubbleImage: null,
+
   chatTitle: 'DailySod Chat',
   chatHeaderBg: '#ffffff',
   chatHeaderText: '#0f172a',
   chatPanelBg: '#f8fafc',
+
   chatUserBubble: '#0f172a',
+  chatUserText: '#ffffff', // ✅ NEW
   chatBotBubble: '#ffffff',
+  chatBotText: '#0f172a', // ✅ NEW
 };
 
 function normalizeSettings(input?: WidgetSettings): Required<WidgetSettings> {
@@ -54,13 +62,86 @@ function normalizeSettings(input?: WidgetSettings): Required<WidgetSettings> {
     bubbleColor: input?.bubbleColor ?? DEFAULTS.bubbleColor,
     bubbleText: input?.bubbleText ?? DEFAULTS.bubbleText,
     bubbleImage: input?.bubbleImage ?? DEFAULTS.bubbleImage,
+
     chatTitle: input?.chatTitle ?? DEFAULTS.chatTitle,
     chatHeaderBg: input?.chatHeaderBg ?? DEFAULTS.chatHeaderBg,
     chatHeaderText: input?.chatHeaderText ?? DEFAULTS.chatHeaderText,
     chatPanelBg: input?.chatPanelBg ?? DEFAULTS.chatPanelBg,
+
     chatUserBubble: input?.chatUserBubble ?? DEFAULTS.chatUserBubble,
+    chatUserText: input?.chatUserText ?? DEFAULTS.chatUserText,
     chatBotBubble: input?.chatBotBubble ?? DEFAULTS.chatBotBubble,
+    chatBotText: input?.chatBotText ?? DEFAULTS.chatBotText,
   };
+}
+
+// ✅ Hex input rules:
+// - Always keep leading '#'
+// - Allow only 6 hex chars after '#'
+// - Strip non-hex chars
+function normalizeHexInput(value: string) {
+  const raw = (value ?? '').trim();
+
+  // If empty, keep as "#"
+  if (raw === '') return '#';
+
+  // Ensure #
+  let v = raw.startsWith('#') ? raw : `#${raw}`;
+
+  // Remove invalid chars (but keep #)
+  const hexOnly = v.slice(1).replace(/[^0-9a-fA-F]/g, '');
+
+  // Limit to 6
+  const limited = hexOnly.slice(0, 6);
+
+  return `#${limited}`;
+}
+
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const safeValue = value && value.length > 0 ? value : '#';
+
+  // Native colour input requires a valid 7-char hex.
+  // If not valid yet (e.g., "#", "#1", etc.), fall back to "#000000" for picker only.
+  const pickerValue = /^#[0-9a-fA-F]{6}$/.test(safeValue) ? safeValue : '#000000';
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
+      <div className="flex items-center gap-3">
+        <input
+          type="color"
+          value={pickerValue}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-10 h-10 p-0 rounded border border-slate-200 dark:border-slate-700 cursor-pointer bg-transparent"
+          aria-label={`${label} colour picker`}
+        />
+
+        <input
+          type="text"
+          value={safeValue}
+          onFocus={() => {
+            if (!value || value.trim() === '') onChange('#');
+          }}
+          onChange={(e) => onChange(normalizeHexInput(e.target.value))}
+          maxLength={7}
+          className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+          placeholder="#000000"
+          inputMode="text"
+        />
+      </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Hex only. Format: #RRGGBB.
+      </p>
+    </div>
+  );
 }
 
 function WidgetPreview({
@@ -73,7 +154,9 @@ function WidgetPreview({
   headerText,
   panelBg,
   userBubble,
+  userText,
   botBubble,
+  botText,
 }: {
   shape: Shape;
   color: string;
@@ -84,7 +167,9 @@ function WidgetPreview({
   headerText: string;
   panelBg: string;
   userBubble: string;
+  userText: string;
   botBubble: string;
+  botText: string;
 }) {
   const [open, setOpen] = useState(true);
 
@@ -105,11 +190,10 @@ function WidgetPreview({
           borderRadius: 14,
         };
 
-  // ✅ FIX: circle content must be centered
+  // ✅ Rounded: plain centred text only
+  // ✅ Circle: centred icon only
   const bubbleClassName =
-    shape === 'circle'
-      ? 'relative inline-flex items-center justify-center text-white font-semibold shadow-lg border border-white/20 active:scale-[0.98] transition'
-      : 'relative inline-flex items-center gap-2 justify-start text-white font-semibold shadow-lg border border-white/20 active:scale-[0.98] transition';
+    'relative inline-flex items-center justify-center text-white font-semibold shadow-lg border border-white/20 active:scale-[0.98] transition';
 
   return (
     <div className="relative w-full min-h-[380px] rounded-xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 shadow-inner overflow-hidden">
@@ -132,19 +216,43 @@ function WidgetPreview({
               </div>
               <div className="text-[10px] uppercase tracking-wide opacity-70">Preview</div>
             </div>
+
             <div className="p-4 space-y-3 text-sm" style={{ backgroundColor: panelBg }}>
               <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border" style={{ backgroundColor: botBubble, borderColor: botBubble }}>
+                <div
+                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border"
+                  style={{
+                    backgroundColor: botBubble,
+                    borderColor: botBubble,
+                    color: botText,
+                  }}
+                >
                   Hi! I&apos;m the DailySod widget.
                 </div>
               </div>
+
               <div className="flex justify-end">
-                <div className="max-w-[80%] text-white rounded-lg px-3 py-2 shadow-lg border" style={{ backgroundColor: userBubble, borderColor: userBubble }}>
+                <div
+                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border"
+                  style={{
+                    backgroundColor: userBubble,
+                    borderColor: userBubble,
+                    color: userText,
+                  }}
+                >
                   Ask me anything.
                 </div>
               </div>
+
               <div className="flex justify-start">
-                <div className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border" style={{ backgroundColor: botBubble, borderColor: botBubble }}>
+                <div
+                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border"
+                  style={{
+                    backgroundColor: botBubble,
+                    borderColor: botBubble,
+                    color: botText,
+                  }}
+                >
                   I&apos;ll apply your saved settings automatically.
                 </div>
               </div>
@@ -158,15 +266,19 @@ function WidgetPreview({
           style={bubbleStyle}
           aria-label="Toggle preview chat"
         >
-          <span className="flex items-center justify-center w-9 h-9 rounded-full bg-white/25 overflow-hidden border-2 border-white/60">
-            {image ? (
-              <img src={image} alt="icon preview" className="w-full h-full object-cover" />
-            ) : (
-              <MessageCircle className="w-4 h-4" />
-            )}
-          </span>
-
-          {shape === 'rounded' && <span className="text-sm font-bold whitespace-nowrap">{text || 'Ask me anything'}</span>}
+          {shape === 'circle' ? (
+            <span className="flex items-center justify-center w-9 h-9 rounded-full bg-white/25 overflow-hidden border-2 border-white/60">
+              {image ? (
+                <img src={image} alt="icon preview" className="w-full h-full object-cover" />
+              ) : (
+                <MessageCircle className="w-4 h-4" />
+              )}
+            </span>
+          ) : (
+            <span className="text-sm font-bold whitespace-nowrap text-center">
+              {text || 'Ask me anything'}
+            </span>
+          )}
         </button>
       </div>
     </div>
@@ -187,8 +299,11 @@ export default function InstallPage() {
   const [chatHeaderBg, setChatHeaderBg] = useState(DEFAULTS.chatHeaderBg);
   const [chatHeaderText, setChatHeaderText] = useState(DEFAULTS.chatHeaderText);
   const [chatPanelBg, setChatPanelBg] = useState(DEFAULTS.chatPanelBg);
+
   const [chatUserBubble, setChatUserBubble] = useState(DEFAULTS.chatUserBubble);
+  const [chatUserText, setChatUserText] = useState(DEFAULTS.chatUserText); // ✅ NEW
   const [chatBotBubble, setChatBotBubble] = useState(DEFAULTS.chatBotBubble);
+  const [chatBotText, setChatBotText] = useState(DEFAULTS.chatBotText); // ✅ NEW
 
   // Baseline (last applied from DB)
   const [baseline, setBaseline] = useState<Required<WidgetSettings> | null>(null);
@@ -197,6 +312,13 @@ export default function InstallPage() {
   const [applying, setApplying] = useState(false);
   const [applyOk, setApplyOk] = useState(false);
   const [applyErr, setApplyErr] = useState<string>('');
+
+  // ✅ Enforce: rounded bubble must never have an image
+  useEffect(() => {
+    if (bubbleShape === 'rounded') {
+      setBubbleImage(null);
+    }
+  }, [bubbleShape]);
 
   useEffect(() => {
     async function init() {
@@ -215,7 +337,7 @@ export default function InstallPage() {
 
       setClientId(data.id);
 
-      // ✅ Load saved widget config and set baseline + draft
+      // Load saved widget config and set baseline + draft
       try {
         const res = await fetch(`/api/widget/config?clientId=${encodeURIComponent(data.id)}`);
         const json = await res.json().catch(() => ({}));
@@ -224,20 +346,21 @@ export default function InstallPage() {
         const loaded = normalizeSettings(json?.settings || {});
         setBaseline(loaded);
 
-        // Populate draft with saved settings
         setBubbleShape(loaded.bubbleShape);
         setBubbleColor(loaded.bubbleColor);
         setBubbleText(loaded.bubbleText);
-        setBubbleImage(loaded.bubbleImage);
+        setBubbleImage(loaded.bubbleShape === 'circle' ? loaded.bubbleImage : null);
 
         setChatTitle(loaded.chatTitle);
         setChatHeaderBg(loaded.chatHeaderBg);
         setChatHeaderText(loaded.chatHeaderText);
         setChatPanelBg(loaded.chatPanelBg);
+
         setChatUserBubble(loaded.chatUserBubble);
+        setChatUserText(loaded.chatUserText);
         setChatBotBubble(loaded.chatBotBubble);
+        setChatBotText(loaded.chatBotText);
       } catch (e) {
-        // If fetch fails, baseline stays null; user can still apply defaults
         console.warn(e);
         setBaseline(normalizeSettings({}));
       }
@@ -246,7 +369,7 @@ export default function InstallPage() {
     init();
   }, []);
 
-  // ✅ Minimal snippet only
+  // Minimal snippet only
   const snippet = useMemo(() => {
     return `<script src="https://daily-sod.vercel.app/widget.js" data-client-id="${clientId}"></script>`;
   }, [clientId]);
@@ -255,15 +378,19 @@ export default function InstallPage() {
     return normalizeSettings({
       position: 'right',
       bubbleShape,
-      bubbleColor,
+      bubbleColor: normalizeHexInput(bubbleColor),
       bubbleText,
-      bubbleImage,
+      bubbleImage: bubbleShape === 'circle' ? bubbleImage : null,
+
       chatTitle,
-      chatHeaderBg,
-      chatHeaderText,
-      chatPanelBg,
-      chatUserBubble,
-      chatBotBubble,
+      chatHeaderBg: normalizeHexInput(chatHeaderBg),
+      chatHeaderText: normalizeHexInput(chatHeaderText),
+      chatPanelBg: normalizeHexInput(chatPanelBg),
+
+      chatUserBubble: normalizeHexInput(chatUserBubble),
+      chatUserText: normalizeHexInput(chatUserText),
+      chatBotBubble: normalizeHexInput(chatBotBubble),
+      chatBotText: normalizeHexInput(chatBotText),
     });
   }, [
     bubbleShape,
@@ -275,10 +402,12 @@ export default function InstallPage() {
     chatHeaderText,
     chatPanelBg,
     chatUserBubble,
+    chatUserText,
     chatBotBubble,
+    chatBotText,
   ]);
 
-  // ✅ Dirty check: only enable Apply when draft differs from baseline
+  // Dirty check
   const isDirty = useMemo(() => {
     if (!baseline) return false;
     return JSON.stringify(draftSettings) !== JSON.stringify(baseline);
@@ -319,7 +448,6 @@ export default function InstallPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || 'Apply failed');
 
-      // ✅ update baseline so button greys out again
       setBaseline(draftSettings);
 
       setApplyOk(true);
@@ -427,21 +555,14 @@ export default function InstallPage() {
               </button>
             </div>
 
-            {bubbleShape === 'circle' && (
+            {/* Bubble settings */}
+            {bubbleShape === 'circle' ? (
               <div className="space-y-3">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Bubble colour (hex)</label>
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700" style={{ backgroundColor: bubbleColor }} />
-                    <input
-                      type="text"
-                      value={bubbleColor}
-                      onChange={(e) => setBubbleColor(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                      placeholder="#0f172a"
-                    />
-                  </div>
-                </div>
+                <ColorField
+                  label="Bubble colour (hex)"
+                  value={bubbleColor}
+                  onChange={(v) => setBubbleColor(normalizeHexInput(v))}
+                />
 
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Center image (png, jpg, gif)</label>
@@ -485,9 +606,7 @@ export default function InstallPage() {
                   </div>
                 </div>
               </div>
-            )}
-
-            {bubbleShape === 'rounded' && (
+            ) : (
               <div className="space-y-3">
                 <div className="flex flex-col gap-2">
                   <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Bubble text</label>
@@ -499,26 +618,20 @@ export default function InstallPage() {
                   />
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Bubble colour (hex)</label>
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700" style={{ backgroundColor: bubbleColor }} />
-                    <input
-                      type="text"
-                      value={bubbleColor}
-                      onChange={(e) => setBubbleColor(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-                </div>
+                <ColorField
+                  label="Bubble colour (hex)"
+                  value={bubbleColor}
+                  onChange={(v) => setBubbleColor(normalizeHexInput(v))}
+                />
               </div>
             )}
 
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+            {/* Chat window styling */}
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
               <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Chat window styling</h3>
 
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Chat name</label>
+                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Chat title</label>
                 <input
                   type="text"
                   value={chatTitle}
@@ -527,77 +640,23 @@ export default function InstallPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Header background</label>
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded border border-slate-200 dark:border-slate-700" style={{ backgroundColor: chatHeaderBg }} />
-                    <input
-                      type="text"
-                      value={chatHeaderBg}
-                      onChange={(e) => setChatHeaderBg(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-                </div>
+              <ColorField label="Header background" value={chatHeaderBg} onChange={(v) => setChatHeaderBg(normalizeHexInput(v))} />
+              <ColorField label="Header text" value={chatHeaderText} onChange={(v) => setChatHeaderText(normalizeHexInput(v))} />
+              <ColorField label="Panel background" value={chatPanelBg} onChange={(v) => setChatPanelBg(normalizeHexInput(v))} />
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Header text</label>
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded border border-slate-200 dark:border-slate-700" style={{ backgroundColor: chatHeaderText }} />
-                    <input
-                      type="text"
-                      value={chatHeaderText}
-                      onChange={(e) => setChatHeaderText(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <ColorField label="Bot bubble" value={chatBotBubble} onChange={(v) => setChatBotBubble(normalizeHexInput(v))} />
+                <ColorField label="Bot text" value={chatBotText} onChange={(v) => setChatBotText(normalizeHexInput(v))} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Panel background</label>
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded border border-slate-200 dark:border-slate-700" style={{ backgroundColor: chatPanelBg }} />
-                    <input
-                      type="text"
-                      value={chatPanelBg}
-                      onChange={(e) => setChatPanelBg(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Bot bubble</label>
-                  <div className="flex items-center gap-3">
-                    <span className="w-8 h-8 rounded border border-slate-200 dark:border-slate-700" style={{ backgroundColor: chatBotBubble }} />
-                    <input
-                      type="text"
-                      value={chatBotBubble}
-                      onChange={(e) => setChatBotBubble(e.target.value)}
-                      className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">User bubble</label>
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded border border-slate-200 dark:border-slate-700" style={{ backgroundColor: chatUserBubble }} />
-                  <input
-                    type="text"
-                    value={chatUserBubble}
-                    onChange={(e) => setChatUserBubble(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                  />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <ColorField label="User bubble" value={chatUserBubble} onChange={(v) => setChatUserBubble(normalizeHexInput(v))} />
+                <ColorField label="User text" value={chatUserText} onChange={(v) => setChatUserText(normalizeHexInput(v))} />
               </div>
             </div>
           </div>
 
+          {/* Preview */}
           <div className="relative">
             <WidgetPreview
               shape={bubbleShape}
@@ -609,12 +668,14 @@ export default function InstallPage() {
               headerText={chatHeaderText}
               panelBg={chatPanelBg}
               userBubble={chatUserBubble}
+              userText={chatUserText}
               botBubble={chatBotBubble}
+              botText={chatBotText}
             />
           </div>
         </div>
 
-        {/* ✅ Bottom-right Apply button */}
+        {/* Bottom-right Apply button */}
         <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
           <div className="text-sm">
             {applyOk && <span className="text-green-600 font-semibold">Applied. Live widget will update automatically.</span>}
