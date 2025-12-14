@@ -595,7 +595,7 @@ export default function DashboardPage() {
                                     }}
                                     className="text-xs font-semibold text-slate-500 hover:text-orange-600 dark:hover:text-orange-400 transition-colors py-2 px-4 rounded-full border border-slate-200 dark:border-slate-800 hover:border-orange-200 dark:hover:border-orange-900"
                                   >
-                                    Load previous messages
+                                    Refresh Messages
                                   </button>
                                 </div>
                               )}
