@@ -221,6 +221,16 @@
       color: var(--ds-header-text);
       font-size: 16px;
       line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      transition: background 120ms ease, transform 120ms ease;
+    }
+
+    #ds-close:hover {
+      background: rgba(0,0,0,0.05);
+      transform: translateY(-1px);
     }
 
     #ds-messages {
@@ -273,12 +283,12 @@
 
     /* ✅ UI/UX: add more bottom padding in the footer */
     #ds-footer {
-      padding: 10px;
-      padding-bottom: 16px; /* NEW */
+      padding: 12px;
+      padding-bottom: 18px;
       border-top: 1px solid var(--ds-border);
       background: #fff;
       display: flex;
-      gap: 8px;
+      gap: 10px;
       align-items: center;
     }
 
@@ -359,6 +369,12 @@
   var messagesEl = panel.querySelector("#ds-messages");
   var inputEl = panel.querySelector("#ds-input");
   var sendBtn = panel.querySelector("#ds-send");
+
+  // Ensure close button glyph is consistent
+  if (closeBtn) {
+    closeBtn.textContent = "×";
+    closeBtn.setAttribute("aria-label", "Close chat");
+  }
 
   // ===== FIX: robust open/close state (prevents "can't open again") =====
   var isOpen = false;
