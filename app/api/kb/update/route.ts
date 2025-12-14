@@ -35,7 +35,7 @@ function getOpenAI() {
   return new OpenAI({ apiKey: key });
 }
 
-// Reuse the same chunking strategy as upload
+// Simple chunker: ~900 chars with overlap.
 function chunkText(input: string, chunkSize = 900, overlap = 120) {
   const text = input.replace(/\r\n/g, "\n").trim();
   if (!text) return [];
@@ -104,11 +104,30 @@ export async function POST(req: Request) {
     );
   }
 
-  try {
-    const supabaseAdmin = getAdminSupabase();
-    const openai = getOpenAI();
+  const chunks = chunkText(content, 900, 120);
+  if (chunks.length === 0) {
+    return NextResponse.json(
+      { error: "No chunks produced" },
+      { status: 400, headers: corsHeaders() }
+    );
+  }
 
-    // Ensure document belongs to client
+  const supabaseAdmin = getAdminSupabase();
+  const openai = getOpenAI();
+
+  // We'll keep the previous chunks so we can restore if something fails mid-way.
+  let previousChunks:
+    | {
+        client_id: string;
+        document_id: string;
+        chunk_index: number;
+        content: string;
+        embedding: number[];
+      }[]
+    | null = null;
+
+  try {
+    // 1) Ensure document belongs to client
     const { data: doc, error: docErr } = await supabaseAdmin
       .from("kb_documents")
       .select("id, client_id")
@@ -116,6 +135,7 @@ export async function POST(req: Request) {
       .single();
 
     if (docErr) throw docErr;
+
     if (!doc || doc.client_id !== clientId) {
       return NextResponse.json(
         { error: "Document not found for this client" },
@@ -123,15 +143,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // Update document metadata
-    const { error: updateErr } = await supabaseAdmin
-      .from("kb_documents")
-      .update({ title, source })
-      .eq("id", documentId);
+    // 2) Load existing chunks (backup for rollback)
+    const { data: oldChunks, error: oldErr } = await supabaseAdmin
+      .from("kb_chunks")
+      .select("client_id, document_id, chunk_index, content, embedding")
+      .eq("document_id", documentId)
+      .order("chunk_index", { ascending: true });
 
-    if (updateErr) throw updateErr;
+    if (oldErr) throw oldErr;
+    previousChunks = (oldChunks || []) as any[];
 
-    // Delete previous chunks
+    // 3) Delete previous chunks first (so we don't show outdated context)
     const { error: delErr } = await supabaseAdmin
       .from("kb_chunks")
       .delete()
@@ -139,15 +161,7 @@ export async function POST(req: Request) {
 
     if (delErr) throw delErr;
 
-    // Chunk new content
-    const chunks = chunkText(content, 900, 120);
-    if (chunks.length === 0) {
-      return NextResponse.json(
-        { error: "No chunks produced" },
-        { status: 400, headers: corsHeaders() }
-      );
-    }
-
+    // 4) Embed + insert new chunks
     const rows: any[] = [];
 
     for (let i = 0; i < chunks.length; i++) {
@@ -172,12 +186,35 @@ export async function POST(req: Request) {
     const { error: insErr } = await supabaseAdmin.from("kb_chunks").insert(rows);
     if (insErr) throw insErr;
 
+    // 5) Update document metadata LAST (so the doc only "changes" once chunks are valid)
+    const { error: updateErr } = await supabaseAdmin
+      .from("kb_documents")
+      .update({ title, source })
+      .eq("id", documentId);
+
+    if (updateErr) throw updateErr;
+
     return NextResponse.json(
       { ok: true, documentId, chunksInserted: rows.length },
       { headers: corsHeaders() }
     );
   } catch (e: any) {
     console.error("[/api/kb/update] failed:", e);
+
+    // Best-effort rollback: if we deleted chunks but couldn't insert new ones, restore old chunks.
+    try {
+      if (previousChunks && previousChunks.length > 0) {
+        const { error: restoreErr } = await supabaseAdmin
+          .from("kb_chunks")
+          .insert(previousChunks);
+        if (restoreErr) {
+          console.error("[/api/kb/update] rollback restore failed:", restoreErr);
+        }
+      }
+    } catch (rollbackErr) {
+      console.error("[/api/kb/update] rollback exception:", rollbackErr);
+    }
+
     return NextResponse.json(
       { error: e?.message || "Update failed" },
       { status: 500, headers: corsHeaders() }
