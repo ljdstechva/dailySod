@@ -159,9 +159,9 @@
       width: 340px;
       height: 460px;
       border-radius: 16px;
-      background: #fff;
+      background: linear-gradient(180deg, rgba(15,23,42,0.08), rgba(15,23,42,0.02)), var(--ds-panel-bg);
       border: 1px solid var(--ds-border);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      box-shadow: 0 18px 48px rgba(0,0,0,0.24);
       z-index: 999999;
       overflow: hidden;
       display: none;
@@ -175,14 +175,11 @@
       pointer-events: none;
 
       will-change: transform, opacity;
-
-      /* ✅ IMPORTANT: allow messages + footer to size correctly */
-      flex-direction: column;
     }
 
     /* open/close animation states */
     #ds-panel.ds-open {
-      display: flex; /* ✅ was block */
+      display: block;
       opacity: 1;
       transform: translateY(0) scale(1);
       pointer-events: auto;
@@ -204,7 +201,6 @@
       align-items: center;
       justify-content: space-between;
       color: var(--ds-header-text);
-      flex: 0 0 auto;
     }
 
     #ds-header-title {
@@ -237,13 +233,11 @@
       transform: translateY(-1px);
     }
 
-    /* ✅ Make messages area flexible so footer padding looks right */
     #ds-messages {
-      flex: 1 1 auto;
-      min-height: 0;
+      height: 340px;
       overflow-y: auto;
-      padding: 12px;
-      background: var(--ds-panel-bg);
+      padding: 16px 14px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.02)), var(--ds-panel-bg);
     }
 
     .ds-row { display: flex; margin-bottom: 10px; }
@@ -252,19 +246,21 @@
 
     .ds-bubble-msg {
       max-width: 78%;
-      padding: 10px 12px;
-      border-radius: 14px;
+      padding: 11px 13px;
+      border-radius: 16px;
       font-size: 13px;
-      line-height: 1.35;
-      border: 1px solid var(--ds-border);
+      line-height: 1.5;
+      border: 1px solid rgba(255,255,255,0.04);
       background: var(--ds-bot-bubble);
       color: var(--ds-bot-text);
       white-space: pre-wrap;
 
+      /* message animation baseline */
       opacity: 0;
       transform: translateX(-10px);
       will-change: transform, opacity;
-      animation: ds-in-left 180ms ease forwards;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.16);
+      animation: ds-in-left 200ms ease forwards;
     }
 
     .ds-user .ds-bubble-msg {
@@ -273,7 +269,8 @@
       border-color: var(--ds-user-bubble);
 
       transform: translateX(10px);
-      animation: ds-in-right 180ms ease forwards;
+      animation: ds-in-right 200ms ease forwards;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.2);
     }
 
     @keyframes ds-in-left {
@@ -286,61 +283,46 @@
       to   { opacity: 1; transform: translateX(0); }
     }
 
-    /* ✅ Composer UI like your 2nd reference (pill + padding) */
+    /* ✅ UI/UX: add more bottom padding in the footer */
     #ds-footer {
-      flex: 0 0 auto;
-      background: #fff;
+      padding: 14px;
+      padding-bottom: 20px;
       border-top: 1px solid var(--ds-border);
-
-      /* outer breathing room */
-      padding: 12px 12px calc(14px + env(safe-area-inset-bottom, 0px));
-
-      /* pill container */
+      background: rgba(255,255,255,0.7);
       display: flex;
-      align-items: center;
       gap: 10px;
-
-      /* keeps the input area visually separated */
-      box-sizing: border-box;
+      align-items: center;
+      backdrop-filter: blur(6px);
     }
 
     #ds-input {
       flex: 1;
       border: 1px solid var(--ds-border);
-      border-radius: 999px;
-      padding: 12px 14px;
+      border-radius: 12px;
+      padding: 10px 12px;
       font-size: 13px;
       outline: none;
       background: #fff;
-      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
-    }
-
-    #ds-input:focus {
-      border-color: rgba(15, 23, 42, 0.25);
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.10);
+      box-shadow: inset 0 1px 2px rgba(15,23,42,0.08);
     }
 
     #ds-send {
       border: 1px solid var(--ds-primary);
       background: var(--ds-primary);
       color: white;
-      border-radius: 999px;
-      padding: 12px 16px;
+      border-radius: 12px;
+      padding: 10px 12px;
       cursor: pointer;
       font-size: 13px;
       font-weight: 700;
-      min-width: 74px;
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
     }
 
-    #ds-send:active {
-      transform: scale(0.98);
-    }
+    #ds-send:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    #ds-send:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      box-shadow: none;
+    .ds-typing {
+      font-style: italic;
+      opacity: 0.8;
+      letter-spacing: 0.01em;
     }
 
     /* Backdrop exists only for layering, NOT for closing */
@@ -404,7 +386,7 @@
     closeBtn.setAttribute("aria-label", "Close chat");
   }
 
-  // ===== FIX: robust open/close state =====
+  // ===== FIX: robust open/close state (prevents "can't open again") =====
   var isOpen = false;
   var isClosing = false;
   var closeTimer = null;
@@ -419,14 +401,17 @@
     bubble.style[side] = "20px";
     panel.style[side] = "20px";
 
+    // keep animation origin correct
     panel.style.transformOrigin = "bottom " + side;
   }
 
   function applyConfig(settings) {
     var s = normalizeSettings(settings);
 
+    // Position
     setSide(s.position);
 
+    // CSS vars
     document.documentElement.style.setProperty("--ds-primary", s.bubbleColor);
     document.documentElement.style.setProperty("--ds-header-bg", s.chatHeaderBg);
     document.documentElement.style.setProperty("--ds-header-text", s.chatHeaderText);
@@ -437,12 +422,14 @@
     document.documentElement.style.setProperty("--ds-bot-bubble", s.chatBotBubble);
     document.documentElement.style.setProperty("--ds-bot-text", s.chatBotText);
 
+    // Bubble shape
     bubble.classList.remove("ds-circle", "ds-rounded");
     bubble.classList.add(s.bubbleShape === "circle" ? "ds-circle" : "ds-rounded");
 
     var iconEl = bubble.querySelector('[data-role="icon"]');
     var textEl = bubble.querySelector('[data-role="text"]');
 
+    // Rounded: plain centred text only, NO icon/image
     if (s.bubbleShape === "rounded") {
       if (iconEl) {
         iconEl.innerHTML = "";
@@ -453,6 +440,7 @@
         textEl.style.display = "inline";
       }
     } else {
+      // Circle: icon only, centred; image optional
       if (iconEl) {
         iconEl.style.display = "inline-flex";
         iconEl.innerHTML = "";
@@ -470,8 +458,13 @@
         textEl.textContent = "";
         textEl.style.display = "none";
       }
+      if (iconEl) {
+        iconEl.innerHTML = "";
+        iconEl.textContent = "✦";
+      }
     }
 
+    // Panel title
     var titleEl = panel.querySelector('[data-role="title"]');
     if (titleEl) titleEl.textContent = s.chatTitle || DEFAULTS.chatTitle;
   }
@@ -479,6 +472,7 @@
   function openPanel() {
     if (isOpen || isClosing) return;
 
+    // cancel pending close
     if (closeTimer) {
       clearTimeout(closeTimer);
       closeTimer = null;
@@ -486,11 +480,14 @@
 
     isOpen = true;
 
+    // backdrop used only for layering, not click closing
     backdrop.style.display = "block";
 
+    // ensure panel is visible then animate via class
     panel.style.display = "block";
     panel.classList.remove("ds-closing");
-    panel.offsetHeight; // force reflow
+    // force reflow so transition consistently triggers
+    panel.offsetHeight; // eslint-disable-line no-unused-expressions
     panel.classList.add("ds-open");
 
     if (inputEl) inputEl.focus();
@@ -500,11 +497,14 @@
     if (!isOpen || isClosing) return;
     isClosing = true;
 
+    // start closing animation
     panel.classList.remove("ds-open");
     panel.classList.add("ds-closing");
 
+    // hide backdrop (visual only)
     backdrop.style.display = "none";
 
+    // after animation, fully hide panel
     closeTimer = setTimeout(function () {
       panel.style.display = "none";
       panel.classList.remove("ds-closing");
@@ -519,7 +519,7 @@
     else openPanel();
   }
 
-  // ===== Sending control =====
+  // ===== Sending control: one message at a time, disable while "typing" =====
   var isSending = false;
 
   function setTypingState(on) {
@@ -528,17 +528,19 @@
     if (sendBtn) sendBtn.disabled = isSending || inputEl.value.trim().length === 0;
   }
 
-  function addMessage(role, text) {
+  function addMessage(role, text, opts) {
     var row = document.createElement("div");
     row.className = "ds-row " + (role === "user" ? "ds-user" : "ds-bot");
 
     var bubbleMsg = document.createElement("div");
     bubbleMsg.className = "ds-bubble-msg";
+    if (opts && opts.typing) bubbleMsg.classList.add("ds-typing");
     bubbleMsg.textContent = text;
 
     row.appendChild(bubbleMsg);
     messagesEl.appendChild(row);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+    return row;
   }
 
   function updateSendState() {
@@ -557,7 +559,11 @@
     inputEl.value = "";
     updateSendState();
 
-    addMessage("bot", "Typing...");
+    // delay the typing bubble for a human-like pause
+    if (typingTimer) clearTimeout(typingTimer);
+    typingTimer = setTimeout(function () {
+      typingRow = addMessage("bot", "Typing...", { typing: true });
+    }, 1500);
     setTypingState(true);
 
     var sessionId = window.__dailysodSessionId || null;
@@ -578,22 +584,28 @@
         return res.json();
       })
       .then(function (data) {
-        var last = messagesEl.lastElementChild;
-        if (last && last.className.indexOf("ds-bot") !== -1) {
-          var b = last.querySelector(".ds-bubble-msg");
-          if (b && b.textContent === "Typing...") messagesEl.removeChild(last);
+        if (typingTimer) {
+          clearTimeout(typingTimer);
+          typingTimer = null;
         }
+        if (typingRow && typingRow.parentNode) {
+          typingRow.parentNode.removeChild(typingRow);
+        }
+        typingRow = null;
 
         window.__dailysodSessionId = data.sessionId || window.__dailysodSessionId;
         addMessage("bot", data.reply || "No reply returned.");
       })
       .catch(function (err) {
-        var last = messagesEl.lastElementChild;
-        if (last && last.className.indexOf("ds-bot") !== -1) {
-          var b = last.querySelector(".ds-bubble-msg");
-          if (b && b.textContent === "Typing...") messagesEl.removeChild(last);
+        if (typingTimer) {
+          clearTimeout(typingTimer);
+          typingTimer = null;
         }
-        addMessage("bot", "Sorry — something went wrong.\n\n" + String(err));
+        if (typingRow && typingRow.parentNode) {
+          typingRow.parentNode.removeChild(typingRow);
+        }
+        typingRow = null;
+        addMessage("bot", "Sorry - something went wrong.\n\n" + String(err));
       })
       .finally(function () {
         setTypingState(false);
@@ -603,9 +615,11 @@
   }
 
   // Initial greeting
-  addMessage("bot", "Hi! I’m the DailySod widget.\n\nAsk me anything.");
+  addMessage("bot", "Hi There! How can I help you?");
 
   // ===== Events =====
+
+  // bubble click animation + toggle
   bubble.addEventListener("pointerdown", function () {
     bubble.classList.add("ds-press");
   });
@@ -626,10 +640,17 @@
     closePanel();
   });
 
-  // ✅ KEEP PANEL OPEN WHEN CLICKING OUTSIDE
+  // ✅ KEEP PANEL OPEN WHEN CLICKING OUTSIDE:
+  // - stopPropagation inside panel is fine
+  // - backdrop MUST NOT close (removed close handler)
   panel.addEventListener("click", function (e) {
     if (e && e.stopPropagation) e.stopPropagation();
   });
+
+  // ❌ REMOVED: backdrop click-to-close
+  // backdrop.addEventListener("click", function () {
+  //   closePanel();
+  // });
 
   inputEl.addEventListener("input", updateSendState);
   inputEl.addEventListener("keydown", function (e) {
