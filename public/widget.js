@@ -1,3 +1,4 @@
+// public/widget.js (or wherever you serve widget.js from)
 (function () {
   if (window.__dailysodWidgetLoaded) return;
   window.__dailysodWidgetLoaded = true;
@@ -71,14 +72,9 @@
       --ds-bot-text: ${DEFAULTS.chatBotText};
 
       --ds-border: #e2e8f0;
-
-      /* Anim timings */
-      --ds-ease: cubic-bezier(.2,.8,.2,1);
-      --ds-fast: 140ms;
-      --ds-med: 220ms;
     }
 
-    /* Bubble */
+    /* ===== Bubble ===== */
     #ds-bubble {
       position: fixed;
       bottom: 20px;
@@ -97,14 +93,16 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.15);
       border: 1px solid rgba(255,255,255,0.18);
 
-      transition: transform var(--ds-fast) var(--ds-ease), opacity var(--ds-fast) var(--ds-ease);
-      transform: translateZ(0);
+      transition: transform 120ms ease, opacity 120ms ease;
+      will-change: transform;
     }
 
-    /* Click micro-animation */
+    /* click animation */
     #ds-bubble.ds-press {
-      transform: translateZ(0) scale(0.96);
+      transform: scale(0.96);
     }
+
+    #ds-bubble:active { transform: scale(0.98); }
 
     /* Circle vs rounded */
     #ds-bubble.ds-circle {
@@ -114,7 +112,7 @@
       padding: 0;
     }
 
-    /* Rounded: plain centred text only */
+    /* Rounded must be plain centred text only */
     #ds-bubble.ds-rounded {
       height: 44px;
       min-width: 170px;
@@ -123,7 +121,7 @@
       justify-content: center;
     }
 
-    /* Bubble icon container (circle only) */
+    /* Bubble inner icon container (centred always) */
     #ds-bubble .ds-icon {
       width: 36px;
       height: 36px;
@@ -153,16 +151,7 @@
       text-align: center;
     }
 
-    /* Backdrop */
-    #ds-backdrop {
-      position: fixed;
-      inset: 0;
-      background: transparent;
-      z-index: 999998;
-      display: none;
-    }
-
-    /* Panel (animated open/close via classes) */
+    /* ===== Panel ===== */
     #ds-panel {
       position: fixed;
       bottom: 88px;
@@ -179,28 +168,29 @@
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
 
       transform-origin: bottom right;
+
+      /* animation baseline */
       opacity: 0;
-      transform: translateY(12px) scale(0.98);
+      transform: translateY(10px) scale(0.98);
+      pointer-events: none;
+
+      will-change: transform, opacity;
     }
 
+    /* open/close animation states */
     #ds-panel.ds-open {
       display: block;
-      animation: dsPanelIn var(--ds-med) var(--ds-ease) forwards;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+      transition: transform 160ms ease, opacity 160ms ease;
     }
 
     #ds-panel.ds-closing {
-      display: block;
-      animation: dsPanelOut 180ms var(--ds-ease) forwards;
-    }
-
-    @keyframes dsPanelIn {
-      from { opacity: 0; transform: translateY(12px) scale(0.98); }
-      to   { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    @keyframes dsPanelOut {
-      from { opacity: 1; transform: translateY(0) scale(1); }
-      to   { opacity: 0; transform: translateY(10px) scale(0.985); }
+      opacity: 0;
+      transform: translateY(10px) scale(0.98);
+      pointer-events: none;
+      transition: transform 140ms ease, opacity 140ms ease;
     }
 
     #ds-header {
@@ -254,30 +244,31 @@
       background: var(--ds-bot-bubble);
       color: var(--ds-bot-text);
       white-space: pre-wrap;
-      transform: translateZ(0);
+
+      /* message animation baseline */
+      opacity: 0;
+      transform: translateX(-10px);
+      will-change: transform, opacity;
+      animation: ds-in-left 180ms ease forwards;
     }
 
     .ds-user .ds-bubble-msg {
       background: var(--ds-user-bubble);
       color: var(--ds-user-text);
       border-color: var(--ds-user-bubble);
+
+      transform: translateX(10px);
+      animation: ds-in-right 180ms ease forwards;
     }
 
-    /* Message entrance animations */
-    .ds-row.ds-animate-in.ds-user .ds-bubble-msg {
-      animation: dsMsgInRight 180ms var(--ds-ease) both;
-    }
-    .ds-row.ds-animate-in.ds-bot .ds-bubble-msg {
-      animation: dsMsgInLeft 180ms var(--ds-ease) both;
+    @keyframes ds-in-left {
+      from { opacity: 0; transform: translateX(-10px); }
+      to   { opacity: 1; transform: translateX(0); }
     }
 
-    @keyframes dsMsgInRight {
-      from { opacity: 0; transform: translateX(14px) scale(0.98); }
-      to   { opacity: 1; transform: translateX(0) scale(1); }
-    }
-    @keyframes dsMsgInLeft {
-      from { opacity: 0; transform: translateX(-14px) scale(0.98); }
-      to   { opacity: 1; transform: translateX(0) scale(1); }
+    @keyframes ds-in-right {
+      from { opacity: 0; transform: translateX(10px); }
+      to   { opacity: 1; transform: translateX(0); }
     }
 
     #ds-footer {
@@ -297,7 +288,6 @@
       font-size: 13px;
       outline: none;
       background: #fff;
-      transition: opacity var(--ds-fast) var(--ds-ease);
     }
 
     #ds-send {
@@ -309,26 +299,17 @@
       cursor: pointer;
       font-size: 13px;
       font-weight: 700;
-      transition: opacity var(--ds-fast) var(--ds-ease), transform var(--ds-fast) var(--ds-ease);
     }
 
-    #ds-send:active { transform: scale(0.98); }
-    #ds-send:disabled { opacity: 0.55; cursor: not-allowed; }
+    #ds-send:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    /* Typing state */
-    #ds-input:disabled {
-      opacity: 0.7;
-      cursor: not-allowed;
-    }
-
-    /* Reduced motion */
-    @media (prefers-reduced-motion: reduce) {
-      #ds-panel.ds-open, #ds-panel.ds-closing,
-      .ds-row.ds-animate-in.ds-user .ds-bubble-msg,
-      .ds-row.ds-animate-in.ds-bot .ds-bubble-msg {
-        animation: none !important;
-      }
-      #ds-panel { opacity: 1; transform: none; }
+    /* Backdrop for click-outside-to-close */
+    #ds-backdrop {
+      position: fixed;
+      inset: 0;
+      background: transparent;
+      z-index: 999998;
+      display: none;
     }
   `;
   document.head.appendChild(style);
@@ -374,8 +355,10 @@
   var inputEl = panel.querySelector("#ds-input");
   var sendBtn = panel.querySelector("#ds-send");
 
-  // State: only allow 1 message at a time
-  var isSending = false;
+  // ===== FIX: robust open/close state (prevents "can't open again") =====
+  var isOpen = false;
+  var isClosing = false;
+  var closeTimer = null;
 
   function setSide(position) {
     var side = position === "left" ? "left" : "right";
@@ -387,26 +370,17 @@
     bubble.style[side] = "20px";
     panel.style[side] = "20px";
 
-    // Set transform origin depending on side for nicer open animation
-    panel.style.transformOrigin = side === "left" ? "bottom left" : "bottom right";
-  }
-
-  function setTypingState(typing) {
-    isSending = !!typing;
-    if (inputEl) inputEl.disabled = isSending;
-    if (sendBtn) sendBtn.disabled = isSending || inputEl.value.trim().length === 0;
-
-    // Optional UX: placeholder changes while waiting
-    if (inputEl) {
-      inputEl.placeholder = isSending ? "Waiting for reply..." : "Type a message...";
-    }
+    // keep animation origin correct
+    panel.style.transformOrigin = "bottom " + side;
   }
 
   function applyConfig(settings) {
     var s = normalizeSettings(settings);
 
+    // Position
     setSide(s.position);
 
+    // CSS vars
     document.documentElement.style.setProperty("--ds-primary", s.bubbleColor);
     document.documentElement.style.setProperty("--ds-header-bg", s.chatHeaderBg);
     document.documentElement.style.setProperty("--ds-header-text", s.chatHeaderText);
@@ -417,12 +391,14 @@
     document.documentElement.style.setProperty("--ds-bot-bubble", s.chatBotBubble);
     document.documentElement.style.setProperty("--ds-bot-text", s.chatBotText);
 
+    // Bubble shape
     bubble.classList.remove("ds-circle", "ds-rounded");
     bubble.classList.add(s.bubbleShape === "circle" ? "ds-circle" : "ds-rounded");
 
     var iconEl = bubble.querySelector('[data-role="icon"]');
     var textEl = bubble.querySelector('[data-role="text"]');
 
+    // Rounded: plain centred text only, NO icon/image
     if (s.bubbleShape === "rounded") {
       if (iconEl) {
         iconEl.innerHTML = "";
@@ -433,6 +409,7 @@
         textEl.style.display = "inline";
       }
     } else {
+      // Circle: icon only, centred; image optional
       if (iconEl) {
         iconEl.style.display = "inline-flex";
         iconEl.innerHTML = "";
@@ -452,60 +429,73 @@
       }
     }
 
+    // Panel title
     var titleEl = panel.querySelector('[data-role="title"]');
     if (titleEl) titleEl.textContent = s.chatTitle || DEFAULTS.chatTitle;
   }
 
   function openPanel() {
-    // Ensure only one widget open at a time
-    try {
-      window.dispatchEvent(new CustomEvent("dailysod:open", { detail: { clientId: clientId } }));
-    } catch (e) {}
+    if (isOpen || isClosing) return;
 
+    // cancel pending close
+    if (closeTimer) {
+      clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+
+    isOpen = true;
+
+    // show backdrop first so outside click works
     backdrop.style.display = "block";
+
+    // ensure panel is visible then animate via class
+    panel.style.display = "block";
     panel.classList.remove("ds-closing");
+    // force reflow so transition consistently triggers
+    panel.offsetHeight; // eslint-disable-line no-unused-expressions
     panel.classList.add("ds-open");
 
-    if (inputEl) {
-      // Focus after animation starts
-      setTimeout(function () {
-        if (!isSending) inputEl.focus();
-      }, 120);
-    }
+    if (inputEl) inputEl.focus();
   }
 
   function closePanel() {
-    // Animate out
+    if (!isOpen || isClosing) return;
+    isClosing = true;
+
+    // start closing animation
     panel.classList.remove("ds-open");
     panel.classList.add("ds-closing");
+
+    // hide backdrop immediately (so page becomes clickable)
     backdrop.style.display = "none";
 
-    // After animation ends, hide
-    setTimeout(function () {
-      panel.classList.remove("ds-closing");
+    // after animation, fully hide panel
+    closeTimer = setTimeout(function () {
       panel.style.display = "none";
-    }, 190);
-  }
-
-  function isPanelOpen() {
-    return panel.classList.contains("ds-open");
+      panel.classList.remove("ds-closing");
+      isOpen = false;
+      isClosing = false;
+      closeTimer = null;
+    }, 160);
   }
 
   function togglePanel() {
-    var open = isPanelOpen();
-    if (open) closePanel();
+    if (isOpen) closePanel();
     else openPanel();
   }
 
-  function addMessage(role, text, opts) {
-    opts = opts || {};
+  // ===== Sending control: one message at a time, disable while "typing" =====
+  var isSending = false;
+
+  function setTypingState(on) {
+    isSending = !!on;
+    if (inputEl) inputEl.disabled = isSending;
+    if (sendBtn) sendBtn.disabled = isSending || inputEl.value.trim().length === 0;
+  }
+
+  function addMessage(role, text) {
     var row = document.createElement("div");
     row.className = "ds-row " + (role === "user" ? "ds-user" : "ds-bot");
-
-    // Entrance animation class
-    if (opts.animate !== false) {
-      row.classList.add("ds-animate-in");
-    }
 
     var bubbleMsg = document.createElement("div");
     bubbleMsg.className = "ds-bubble-msg";
@@ -514,25 +504,12 @@
     row.appendChild(bubbleMsg);
     messagesEl.appendChild(row);
     messagesEl.scrollTop = messagesEl.scrollHeight;
-
-    return row;
   }
 
   function updateSendState() {
-    if (isSending) {
-      sendBtn.disabled = true;
-      return;
-    }
+    if (!inputEl || !sendBtn) return;
     var val = inputEl.value.trim();
-    sendBtn.disabled = val.length === 0;
-  }
-
-  function removeTypingIfPresent() {
-    var last = messagesEl.lastElementChild;
-    if (last && last.className.indexOf("ds-bot") !== -1) {
-      var b = last.querySelector(".ds-bubble-msg");
-      if (b && b.textContent === "Typing...") messagesEl.removeChild(last);
-    }
+    sendBtn.disabled = isSending || val.length === 0;
   }
 
   function sendMessage() {
@@ -541,15 +518,12 @@
     var text = inputEl.value.trim();
     if (!text) return;
 
-    // Lock send until bot reply returns
-    setTypingState(true);
-
     addMessage("user", text);
     inputEl.value = "";
     updateSendState();
 
-    // Add typing indicator (animated in)
     addMessage("bot", "Typing...");
+    setTypingState(true);
 
     var sessionId = window.__dailysodSessionId || null;
 
@@ -569,56 +543,71 @@
         return res.json();
       })
       .then(function (data) {
-        removeTypingIfPresent();
+        var last = messagesEl.lastElementChild;
+        if (last && last.className.indexOf("ds-bot") !== -1) {
+          var b = last.querySelector(".ds-bubble-msg");
+          if (b && b.textContent === "Typing...") messagesEl.removeChild(last);
+        }
+
         window.__dailysodSessionId = data.sessionId || window.__dailysodSessionId;
         addMessage("bot", data.reply || "No reply returned.");
       })
       .catch(function (err) {
-        removeTypingIfPresent();
+        var last = messagesEl.lastElementChild;
+        if (last && last.className.indexOf("ds-bot") !== -1) {
+          var b = last.querySelector(".ds-bubble-msg");
+          if (b && b.textContent === "Typing...") messagesEl.removeChild(last);
+        }
         addMessage("bot", "Sorry — something went wrong.\n\n" + String(err));
       })
       .finally(function () {
-        // Unlock send
         setTypingState(false);
         updateSendState();
-        if (inputEl) inputEl.focus();
+        if (inputEl && isOpen) inputEl.focus();
       });
   }
 
-  // Bubble click animation helper
-  function pressBubble() {
-    bubble.classList.add("ds-press");
-    setTimeout(function () {
-      bubble.classList.remove("ds-press");
-    }, 140);
-  }
-
   // Initial greeting
-  addMessage("bot", "Hi! I’m the DailySod widget.\n\nAsk me anything.", { animate: false });
+  addMessage("bot", "Hi! I’m the DailySod widget.\n\nAsk me anything.");
 
-  // Events
-  bubble.addEventListener("click", function () {
-    pressBubble();
+  // ===== Events =====
+
+  // bubble click animation + toggle (FIX: stopPropagation to avoid outside-close race)
+  bubble.addEventListener("pointerdown", function () {
+    bubble.classList.add("ds-press");
+  });
+  bubble.addEventListener("pointerup", function () {
+    bubble.classList.remove("ds-press");
+  });
+  bubble.addEventListener("pointercancel", function () {
+    bubble.classList.remove("ds-press");
+  });
+
+  bubble.addEventListener("click", function (e) {
+    // FIX: prevents any document/backdrop click handlers from immediately closing or blocking reopen
+    if (e && e.stopPropagation) e.stopPropagation();
     togglePanel();
   });
 
-  closeBtn.addEventListener("click", closePanel);
-  backdrop.addEventListener("click", closePanel);
+  closeBtn.addEventListener("click", function (e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    closePanel();
+  });
+
+  // Clicking outside closes it (keep this behaviour)
+  // FIX: stopPropagation on panel so clicks inside never count as "outside"
+  panel.addEventListener("click", function (e) {
+    if (e && e.stopPropagation) e.stopPropagation();
+  });
+  backdrop.addEventListener("click", function () {
+    closePanel();
+  });
 
   inputEl.addEventListener("input", updateSendState);
   inputEl.addEventListener("keydown", function (e) {
     if (e.key === "Enter") sendMessage();
   });
   sendBtn.addEventListener("click", sendMessage);
-
-  // Only one widget panel open at a time (across multiple embeds on same page)
-  window.addEventListener("dailysod:open", function (ev) {
-    try {
-      if (ev && ev.detail && ev.detail.clientId && ev.detail.clientId !== clientId) {
-        if (isPanelOpen()) closePanel();
-      }
-    } catch (e) {}
-  });
 
   // Fetch config (and keep it updated)
   var lastConfigHash = null;

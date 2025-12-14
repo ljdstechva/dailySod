@@ -171,7 +171,15 @@ function WidgetPreview({
   botBubble: string;
   botText: string;
 }) {
+  // ✅ Animation-safe state:
+  // - "open" is the intended state
+  // - "renderPanel" keeps panel mounted during close animation
   const [open, setOpen] = useState(true);
+  const [renderPanel, setRenderPanel] = useState(true);
+  const [closing, setClosing] = useState(false);
+
+  // Bubble press animation
+  const [pressed, setPressed] = useState(false);
 
   const bubbleStyle: React.CSSProperties =
     shape === 'circle'
@@ -193,7 +201,28 @@ function WidgetPreview({
   // ✅ Rounded: plain centred text only
   // ✅ Circle: centred icon only
   const bubbleClassName =
-    'relative inline-flex items-center justify-center text-white font-semibold shadow-lg border border-white/20 active:scale-[0.98] transition';
+    'relative inline-flex items-center justify-center text-white font-semibold shadow-lg border border-white/20 transition';
+
+  function toggle() {
+    // Bubble press micro-animation
+    setPressed(true);
+    window.setTimeout(() => setPressed(false), 140);
+
+    // Panel open/close with animation
+    if (open) {
+      setClosing(true);
+      setOpen(false);
+
+      window.setTimeout(() => {
+        setRenderPanel(false);
+        setClosing(false);
+      }, 190);
+    } else {
+      setRenderPanel(true);
+      setClosing(false);
+      setOpen(true);
+    }
+  }
 
   return (
     <div className="relative w-full min-h-[380px] rounded-xl border border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900 shadow-inner overflow-hidden">
@@ -201,9 +230,12 @@ function WidgetPreview({
       <div className="absolute inset-4 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl pointer-events-none" />
 
       <div className="absolute bottom-5 right-5 flex flex-col items-end gap-3">
-        {open && (
+        {renderPanel && (
           <div
-            className="w-[320px] rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2"
+            className={[
+              'w-[320px] rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden',
+              closing ? 'ds-panel-out' : 'ds-panel-in',
+            ].join(' ')}
             style={{ backgroundColor: panelBg }}
           >
             <div
@@ -220,7 +252,7 @@ function WidgetPreview({
             <div className="p-4 space-y-3 text-sm" style={{ backgroundColor: panelBg }}>
               <div className="flex justify-start">
                 <div
-                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border"
+                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border ds-msg ds-msg-bot"
                   style={{
                     backgroundColor: botBubble,
                     borderColor: botBubble,
@@ -233,7 +265,7 @@ function WidgetPreview({
 
               <div className="flex justify-end">
                 <div
-                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border"
+                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border ds-msg ds-msg-user"
                   style={{
                     backgroundColor: userBubble,
                     borderColor: userBubble,
@@ -246,7 +278,7 @@ function WidgetPreview({
 
               <div className="flex justify-start">
                 <div
-                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border"
+                  className="max-w-[80%] rounded-lg px-3 py-2 shadow-lg border ds-msg ds-msg-bot"
                   style={{
                     backgroundColor: botBubble,
                     borderColor: botBubble,
@@ -261,8 +293,11 @@ function WidgetPreview({
         )}
 
         <button
-          onClick={() => setOpen((v) => !v)}
-          className={bubbleClassName}
+          onClick={toggle}
+          className={[
+            bubbleClassName,
+            pressed ? 'ds-bubble-press' : '',
+          ].join(' ')}
           style={bubbleStyle}
           aria-label="Toggle preview chat"
         >
@@ -281,6 +316,57 @@ function WidgetPreview({
           )}
         </button>
       </div>
+
+      {/* Local CSS for animations (preview-only) */}
+      <style jsx>{`
+        .ds-panel-in {
+          animation: dsPanelIn 220ms cubic-bezier(.2,.8,.2,1) both;
+        }
+        .ds-panel-out {
+          animation: dsPanelOut 180ms cubic-bezier(.2,.8,.2,1) both;
+        }
+
+        @keyframes dsPanelIn {
+          from { opacity: 0; transform: translateY(12px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes dsPanelOut {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 0; transform: translateY(10px) scale(0.985); }
+        }
+
+        .ds-bubble-press {
+          transform: scale(0.96);
+        }
+
+        .ds-msg {
+          transform: translateZ(0);
+        }
+        .ds-msg-user {
+          animation: dsMsgInRight 180ms cubic-bezier(.2,.8,.2,1) both;
+        }
+        .ds-msg-bot {
+          animation: dsMsgInLeft 180ms cubic-bezier(.2,.8,.2,1) both;
+        }
+
+        @keyframes dsMsgInRight {
+          from { opacity: 0; transform: translateX(14px) scale(0.98); }
+          to { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes dsMsgInLeft {
+          from { opacity: 0; transform: translateX(-14px) scale(0.98); }
+          to { opacity: 1; transform: translateX(0) scale(1); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .ds-panel-in, .ds-panel-out, .ds-msg-user, .ds-msg-bot {
+            animation: none !important;
+          }
+          .ds-bubble-press {
+            transform: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
