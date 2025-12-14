@@ -243,7 +243,7 @@ function WidgetPreview({
               style={{ backgroundColor: headerBg, color: headerText }}
             >
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <MessageSquare className="w-4 h-4 text-orange-500" />
+                
                 {chatTitle || 'DailySod Chat'}
               </div>
               <div className="text-[10px] uppercase tracking-wide opacity-70">Preview</div>

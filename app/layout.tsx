@@ -4,6 +4,21 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'] });
+const themeInitScript = `
+  (function() {
+    try {
+      const stored = localStorage.getItem('theme');
+      const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+      const theme = stored === 'light' ? 'light' : stored === 'dark' ? 'dark' : (prefersLight ? 'light' : 'dark');
+      const root = document.documentElement;
+      root.classList.remove('light','dark');
+      root.classList.add(theme);
+      root.style.colorScheme = theme;
+    } catch (e) {
+      // no-op
+    }
+  })();
+`;
 
 export const metadata = {
   title: 'DailySod',
@@ -16,8 +31,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning style={{ backgroundColor: '#0f172a' }}>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script src="https://cdn.tailwindcss.com"></script>
         <script
           dangerouslySetInnerHTML={{
