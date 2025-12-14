@@ -175,11 +175,14 @@
       pointer-events: none;
 
       will-change: transform, opacity;
+
+      /* ✅ IMPORTANT: allow messages + footer to size correctly */
+      flex-direction: column;
     }
 
     /* open/close animation states */
     #ds-panel.ds-open {
-      display: block;
+      display: flex; /* ✅ was block */
       opacity: 1;
       transform: translateY(0) scale(1);
       pointer-events: auto;
@@ -201,6 +204,7 @@
       align-items: center;
       justify-content: space-between;
       color: var(--ds-header-text);
+      flex: 0 0 auto;
     }
 
     #ds-header-title {
@@ -233,8 +237,10 @@
       transform: translateY(-1px);
     }
 
+    /* ✅ Make messages area flexible so footer padding looks right */
     #ds-messages {
-      height: 340px;
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
       padding: 12px;
       background: var(--ds-panel-bg);
@@ -255,7 +261,6 @@
       color: var(--ds-bot-text);
       white-space: pre-wrap;
 
-      /* message animation baseline */
       opacity: 0;
       transform: translateX(-10px);
       will-change: transform, opacity;
@@ -281,39 +286,62 @@
       to   { opacity: 1; transform: translateX(0); }
     }
 
-    /* ✅ UI/UX: add more bottom padding in the footer */
+    /* ✅ Composer UI like your 2nd reference (pill + padding) */
     #ds-footer {
-      padding: 12px;
-      padding-bottom: 18px;
-      border-top: 1px solid var(--ds-border);
+      flex: 0 0 auto;
       background: #fff;
+      border-top: 1px solid var(--ds-border);
+
+      /* outer breathing room */
+      padding: 12px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+
+      /* pill container */
       display: flex;
-      gap: 10px;
       align-items: center;
+      gap: 10px;
+
+      /* keeps the input area visually separated */
+      box-sizing: border-box;
     }
 
     #ds-input {
       flex: 1;
       border: 1px solid var(--ds-border);
-      border-radius: 12px;
-      padding: 10px 12px;
+      border-radius: 999px;
+      padding: 12px 14px;
       font-size: 13px;
       outline: none;
       background: #fff;
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+    }
+
+    #ds-input:focus {
+      border-color: rgba(15, 23, 42, 0.25);
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.10);
     }
 
     #ds-send {
       border: 1px solid var(--ds-primary);
       background: var(--ds-primary);
       color: white;
-      border-radius: 12px;
-      padding: 10px 12px;
+      border-radius: 999px;
+      padding: 12px 16px;
       cursor: pointer;
       font-size: 13px;
       font-weight: 700;
+      min-width: 74px;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
     }
 
-    #ds-send:disabled { opacity: 0.6; cursor: not-allowed; }
+    #ds-send:active {
+      transform: scale(0.98);
+    }
+
+    #ds-send:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
 
     /* Backdrop exists only for layering, NOT for closing */
     #ds-backdrop {
@@ -376,7 +404,7 @@
     closeBtn.setAttribute("aria-label", "Close chat");
   }
 
-  // ===== FIX: robust open/close state (prevents "can't open again") =====
+  // ===== FIX: robust open/close state =====
   var isOpen = false;
   var isClosing = false;
   var closeTimer = null;
@@ -391,17 +419,14 @@
     bubble.style[side] = "20px";
     panel.style[side] = "20px";
 
-    // keep animation origin correct
     panel.style.transformOrigin = "bottom " + side;
   }
 
   function applyConfig(settings) {
     var s = normalizeSettings(settings);
 
-    // Position
     setSide(s.position);
 
-    // CSS vars
     document.documentElement.style.setProperty("--ds-primary", s.bubbleColor);
     document.documentElement.style.setProperty("--ds-header-bg", s.chatHeaderBg);
     document.documentElement.style.setProperty("--ds-header-text", s.chatHeaderText);
@@ -412,14 +437,12 @@
     document.documentElement.style.setProperty("--ds-bot-bubble", s.chatBotBubble);
     document.documentElement.style.setProperty("--ds-bot-text", s.chatBotText);
 
-    // Bubble shape
     bubble.classList.remove("ds-circle", "ds-rounded");
     bubble.classList.add(s.bubbleShape === "circle" ? "ds-circle" : "ds-rounded");
 
     var iconEl = bubble.querySelector('[data-role="icon"]');
     var textEl = bubble.querySelector('[data-role="text"]');
 
-    // Rounded: plain centred text only, NO icon/image
     if (s.bubbleShape === "rounded") {
       if (iconEl) {
         iconEl.innerHTML = "";
@@ -430,7 +453,6 @@
         textEl.style.display = "inline";
       }
     } else {
-      // Circle: icon only, centred; image optional
       if (iconEl) {
         iconEl.style.display = "inline-flex";
         iconEl.innerHTML = "";
@@ -450,7 +472,6 @@
       }
     }
 
-    // Panel title
     var titleEl = panel.querySelector('[data-role="title"]');
     if (titleEl) titleEl.textContent = s.chatTitle || DEFAULTS.chatTitle;
   }
@@ -458,7 +479,6 @@
   function openPanel() {
     if (isOpen || isClosing) return;
 
-    // cancel pending close
     if (closeTimer) {
       clearTimeout(closeTimer);
       closeTimer = null;
@@ -466,14 +486,11 @@
 
     isOpen = true;
 
-    // backdrop used only for layering, not click closing
     backdrop.style.display = "block";
 
-    // ensure panel is visible then animate via class
     panel.style.display = "block";
     panel.classList.remove("ds-closing");
-    // force reflow so transition consistently triggers
-    panel.offsetHeight; // eslint-disable-line no-unused-expressions
+    panel.offsetHeight; // force reflow
     panel.classList.add("ds-open");
 
     if (inputEl) inputEl.focus();
@@ -483,14 +500,11 @@
     if (!isOpen || isClosing) return;
     isClosing = true;
 
-    // start closing animation
     panel.classList.remove("ds-open");
     panel.classList.add("ds-closing");
 
-    // hide backdrop (visual only)
     backdrop.style.display = "none";
 
-    // after animation, fully hide panel
     closeTimer = setTimeout(function () {
       panel.style.display = "none";
       panel.classList.remove("ds-closing");
@@ -505,7 +519,7 @@
     else openPanel();
   }
 
-  // ===== Sending control: one message at a time, disable while "typing" =====
+  // ===== Sending control =====
   var isSending = false;
 
   function setTypingState(on) {
@@ -592,8 +606,6 @@
   addMessage("bot", "Hi! I’m the DailySod widget.\n\nAsk me anything.");
 
   // ===== Events =====
-
-  // bubble click animation + toggle
   bubble.addEventListener("pointerdown", function () {
     bubble.classList.add("ds-press");
   });
@@ -614,17 +626,10 @@
     closePanel();
   });
 
-  // ✅ KEEP PANEL OPEN WHEN CLICKING OUTSIDE:
-  // - stopPropagation inside panel is fine
-  // - backdrop MUST NOT close (removed close handler)
+  // ✅ KEEP PANEL OPEN WHEN CLICKING OUTSIDE
   panel.addEventListener("click", function (e) {
     if (e && e.stopPropagation) e.stopPropagation();
   });
-
-  // ❌ REMOVED: backdrop click-to-close
-  // backdrop.addEventListener("click", function () {
-  //   closePanel();
-  // });
 
   inputEl.addEventListener("input", updateSendState);
   inputEl.addEventListener("keydown", function (e) {
