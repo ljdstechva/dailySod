@@ -343,21 +343,27 @@
 
     #ds-input {
       flex: 1;
-      border: none;
-      outline: none;
-      font-family: var(--ds-font);
-      font-size: 14px;
-      background: transparent;
-      padding: 8px 0;
-      min-height: 24px;
-      max-height: 100px;
-      resize: none;
+  border: none;
+  outline: none;
+  font-family: var(--ds-font);
+  font-size: 14px;
 
-      /* ✅ FIX: force readable text regardless of host theme */
-  color: #0f172a;
-  -webkit-text-fill-color: #0f172a; /* Safari/Chrome autofill weirdness */
-  caret-color: #0f172a;
+  /* 🔒 HARD OVERRIDES — DO NOT INHERIT FROM HOST SITE */
+  color: #000000 !important;
+  caret-color: #000000 !important;
+  background: transparent !important;
+
+  padding: 8px 0;
+  min-height: 24px;
+  max-height: 100px;
+  resize: none;
     }
+
+    /* Placeholder must also be forced */
+#ds-input::placeholder {
+  color: #6b7280 !important; /* slate-500 */
+  opacity: 1;
+}
 
     #ds-send {
       width: 36px;
