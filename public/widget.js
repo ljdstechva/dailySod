@@ -362,7 +362,7 @@
     /* Placeholder must also be forced */
 #ds-input::placeholder {
   color: #6b7280 !important; /* slate-500 */
-  opacity: 1;
+  opacity: 0.6;
 }
 
     #ds-send {
