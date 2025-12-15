@@ -50,16 +50,16 @@ export default function LandingPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
             </span>
-            New: GPT-4o Integration
+            New: GPT-5 Integration
           </div>
           
           <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1] text-slate-900 dark:text-white">
-            Support your customers <br className="hidden sm:block" />
+            Turn Website Chats Into Real Customers <br className="hidden sm:block" />
             <span className="bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">while you sleep.</span>
           </h1>
           
           <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mb-12 leading-relaxed antialiased">
-            Transform your knowledge base into an AI agent that resolves 60% of tickets instantly. Setup takes 2 minutes.
+            An AI chat widget that answers questions, captures leads, and supports customers in seconds.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center justify-center">
