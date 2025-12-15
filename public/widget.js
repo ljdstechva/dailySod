@@ -352,6 +352,11 @@
       min-height: 24px;
       max-height: 100px;
       resize: none;
+
+      /* ✅ FIX: force readable text regardless of host theme */
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a; /* Safari/Chrome autofill weirdness */
+  caret-color: #0f172a;
     }
 
     #ds-send {

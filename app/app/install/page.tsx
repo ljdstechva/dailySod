@@ -109,21 +109,27 @@ function ColorField({
   const safeValue = value && value.length > 0 ? value : '#';
 
   // Native colour input requires a valid 7-char hex.
-  // If not valid yet (e.g., "#", "#1", etc.), fall back to "#000000" for picker only.
   const pickerValue = /^#[0-9a-fA-F]{6}$/.test(safeValue) ? safeValue : '#000000';
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{label}</label>
-      <div className="flex items-center gap-3">
-        <input
-          type="color"
-          value={pickerValue}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-10 h-10 p-0 rounded border border-slate-200 dark:border-slate-700 cursor-pointer bg-transparent"
-          aria-label={`${label} colour picker`}
-        />
+    <div className="flex flex-col gap-2 min-w-0">
+      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+        {label}
+      </label>
 
+      <div className="flex items-center gap-3 min-w-0">
+        {/* ✅ FIXED SIZE COLOUR SWATCH */}
+        <div className="shrink-0">
+          <input
+            type="color"
+            value={pickerValue}
+            onChange={(e) => onChange(e.target.value)}
+            className="h-10 w-10 shrink-0 cursor-pointer rounded-md border border-slate-200 dark:border-slate-700 bg-transparent p-0"
+            aria-label={`${label} colour picker`}
+          />
+        </div>
+
+        {/* ✅ HEX INPUT */}
         <input
           type="text"
           value={safeValue}
@@ -132,17 +138,19 @@ function ColorField({
           }}
           onChange={(e) => onChange(normalizeHexInput(e.target.value))}
           maxLength={7}
-          className="flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+          className="min-w-0 flex-1 px-3 py-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
           placeholder="#000000"
           inputMode="text"
         />
       </div>
+
       <p className="text-xs text-slate-500 dark:text-slate-400">
         Hex only. Format: #RRGGBB.
       </p>
     </div>
   );
 }
+
 
 function WidgetPreview({
   shape,
