@@ -193,8 +193,8 @@ function WidgetPreview({
     shape === 'circle'
       ? {
           backgroundColor: color,
-          width: 58,
-          height: 58,
+          width: 60,
+          height: 60,
           borderRadius: 9999,
           padding: 0,
         }
@@ -310,7 +310,10 @@ function WidgetPreview({
           aria-label="Toggle preview chat"
         >
           {shape === 'circle' ? (
-            <span className="flex items-center justify-center w-9 h-9 rounded-full bg-white/25 overflow-hidden border-2 border-white/60">
+            <span
+  className="flex items-center justify-center rounded-full overflow-hidden border-2 border-white/60"
+  style={{ width: 50, height: 50 }} // ✅ match widget.js icon size
+>
               {image ? (
                 <img src={image} alt="icon preview" className="w-full h-full object-cover" />
               ) : (
