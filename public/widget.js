@@ -144,8 +144,8 @@
     }
     
     #ds-bubble .ds-icon {
-      width: 24px;
-      height: 24px;
+      width: 50px;
+      height: 50px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -155,7 +155,8 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 50%;
+      border-radius: 9999px;
+      display: block;
     }
 
     /* ===== Chat Panel ===== */
