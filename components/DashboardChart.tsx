@@ -65,29 +65,29 @@ const bezierCommand = (point: number[], i: number, a: number[][]) => {
 };
 
 const svgPath = (points: number[][], command: (point: number[], i: number, a: number[][]) => string) => {
-  return points.reduce((acc, point, i, a) => i === 0 
-    ? `M ${point[0]},${point[1]}` 
+  return points.reduce((acc, point, i, a) => i === 0
+    ? `M ${point[0]},${point[1]}`
     : `${acc} ${command(point, i, a)}`, ''
   );
 };
 // -----------------------
 
-export const AreaChart: React.FC<AreaChartProps> = ({ 
-  data, 
-  color = '#f97316', 
-  height = 200 
+export const AreaChart: React.FC<AreaChartProps> = ({
+  data,
+  color = '#f97316',
+  height = 200
 }) => {
   const { theme } = useTheme();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     if (!data.length) return;
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
   }, [data.length]);
-  
+
   if (!data.length) {
     return (
       <div
@@ -109,12 +109,12 @@ export const AreaChart: React.FC<AreaChartProps> = ({
     () => Array.from({ length: Math.ceil(maxValue / step) }, (_, i) => (i + 1) * step),
     [maxValue, step]
   );
-  
+
   const getX = (index: number) => (index / maxX) * 100;
   const getY = (value: number) => 100 - (value / maxValue) * 100;
 
   const points = useMemo(() => data.map((d, i) => [getX(i), getY(d.value)]), [data, maxValue, maxX]);
-  
+
   const linePathDefinition = useMemo(() => svgPath(points, bezierCommand), [points]);
   const areaPathDefinition = `${linePathDefinition} L 100,100 L 0,100 Z`;
 
@@ -137,15 +137,15 @@ export const AreaChart: React.FC<AreaChartProps> = ({
   const activeLabel = hoveredIndex !== null ? data[hoveredIndex].label : '';
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="w-full relative cursor-crosshair touch-none select-none group" 
+      className="w-full relative cursor-crosshair touch-none select-none group"
       style={{ height: `${height}px` }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      <svg 
-        viewBox="0 0 100 100" 
+      <svg
+        viewBox="0 0 100 100"
         preserveAspectRatio="none"
         className="w-full h-full overflow-visible"
       >
@@ -174,10 +174,10 @@ export const AreaChart: React.FC<AreaChartProps> = ({
         </g>
 
         {/* Animated Group */}
-        <g 
-          style={{ 
+        <g
+          style={{
             clipPath: isVisible ? 'inset(0 -20% 0 -20%)' : 'inset(0 100% 0 0)',
-            transition: 'clip-path 1.2s cubic-bezier(0.25, 1, 0.5, 1)' 
+            transition: 'clip-path 1.2s cubic-bezier(0.25, 1, 0.5, 1)'
           }}
         >
           {/* Fill Area */}
@@ -231,20 +231,19 @@ export const AreaChart: React.FC<AreaChartProps> = ({
           }}
         />
       )}
-      
+
       {/* Floating Minimalist Tooltip */}
-      <div 
-        className={`absolute pointer-events-none z-20 transition-all duration-200 ease-out ${
-          hoveredIndex !== null ? 'opacity-100 translate-y-[-6px]' : 'opacity-0 translate-y-[6px]'
-        }`}
-        style={{ 
+      <div
+        className={`absolute pointer-events-none z-20 transition-all duration-200 ease-out ${hoveredIndex !== null ? 'opacity-100 translate-y-[-6px]' : 'opacity-0 translate-y-[6px]'
+          }`}
+        style={{
           left: hoveredIndex !== null ? `${getX(hoveredIndex)}%` : '50%',
           top: hoveredIndex !== null ? `${getY(activeValue)}%` : '50%',
           transform: 'translate(10px, -50%)',
         }}
       >
         <div className="bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-1.5 rounded-full shadow-lg text-xs font-bold flex items-center gap-2 whitespace-nowrap">
-          <span>{activeValue}</span>
+          <span>{new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(activeValue)}</span>
           <span className="opacity-60 border-l border-white/20 dark:border-black/10 pl-2 uppercase tracking-wider text-[10px]">
             {activeLabel}
           </span>
@@ -257,13 +256,13 @@ export const AreaChart: React.FC<AreaChartProps> = ({
           <div
             key={`label-${value}`}
             className="absolute text-[10px] font-semibold text-slate-400 dark:text-slate-600 px-1"
-            style={{ 
+            style={{
               top: `${getY(value)}%`,
               transform: 'translateY(-50%)',
               left: 0
             }}
           >
-            {value}
+            {new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value)}
           </div>
         ))}
       </div>
@@ -271,10 +270,10 @@ export const AreaChart: React.FC<AreaChartProps> = ({
       {/* Minimalist X-Axis Labels */}
       <div className="flex justify-between mt-6 text-[10px] uppercase tracking-wider font-bold text-slate-300 dark:text-slate-600 select-none">
         {data.map((d, i) => (
-          <div 
-            key={i} 
+          <div
+            key={i}
             className="transition-all duration-300 flex flex-col items-center gap-1"
-            style={{ 
+            style={{
               color: hoveredIndex === i ? color : undefined,
               opacity: hoveredIndex === i ? 1 : 0.6,
               transform: hoveredIndex === i ? 'translateY(-2px)' : 'translateY(0)',
